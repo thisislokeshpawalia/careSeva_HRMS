@@ -1,0 +1,163 @@
+import 'package:flutter/material.dart';
+
+class AppointmentsScreen extends StatelessWidget {
+  const AppointmentsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Appointments & Queue',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0D47A1),
+                      ),
+                ),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.queue),
+                      label: const Text('OPD Check-in'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00BFA5),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.add),
+                      label: const Text('New Appointment'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search appointments...',
+                      prefixIcon: const Icon(Icons.search),
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                DropdownMenu<String>(
+                  initialSelection: 'Today',
+                  onSelected: (String? value) {},
+                  dropdownMenuEntries: const [
+                    DropdownMenuEntry(value: 'Today', label: 'Today'),
+                    DropdownMenuEntry(value: 'Tomorrow', label: 'Tomorrow'),
+                    DropdownMenuEntry(value: 'This Week', label: 'This Week'),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    headingTextStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade700,
+                    ),
+                    dataRowMaxHeight: 72,
+                    dataRowMinHeight: 72,
+                    columns: const [
+                      DataColumn(label: Text('Time')),
+                      DataColumn(label: Text('Patient')),
+                      DataColumn(label: Text('Doctor')),
+                      DataColumn(label: Text('Type')),
+                      DataColumn(label: Text('Status')),
+                      DataColumn(label: Text('Action')),
+                    ],
+                    rows: [
+                      _buildAppointmentRow('09:00 AM', 'Jane Doe', 'Dr. Smith', 'Follow-up', 'Completed', Colors.green),
+                      _buildAppointmentRow('09:30 AM', 'Mark Taylor', 'Dr. Adams', 'OPD Walk-in', 'In Progress', Colors.blue),
+                      _buildAppointmentRow('10:00 AM', 'Alice Smith', 'Dr. Clark', 'Consultation', 'Waiting', Colors.orange),
+                      _buildAppointmentRow('10:30 AM', 'Bob Brown', 'Dr. Smith', 'Check-up', 'Scheduled', Colors.grey),
+                      _buildAppointmentRow('11:00 AM', 'Eva Green', 'Dr. Adams', 'OPD Walk-in', 'Scheduled', Colors.grey),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  DataRow _buildAppointmentRow(String time, String patient, String doctor, String type, String status, Color statusColor) {
+    final isOPD = type.contains('OPD');
+    return DataRow(
+      cells: [
+        DataCell(Text(time, style: const TextStyle(fontWeight: FontWeight.bold))),
+        DataCell(Text(patient, style: const TextStyle(fontWeight: FontWeight.w500))),
+        DataCell(Text(doctor)),
+        DataCell(
+          Row(
+            children: [
+              if (isOPD) const Icon(Icons.directions_walk, size: 16, color: Colors.orange) else const Icon(Icons.event_available, size: 16, color: Color(0xFF1565C0)),
+              const SizedBox(width: 8),
+              Text(type),
+            ],
+          ),
+        ),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withAlpha(25),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(color: statusColor, fontWeight: FontWeight.w500, fontSize: 13),
+            ),
+          ),
+        ),
+        DataCell(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                color: const Color(0xFF1565C0),
+                onPressed: () {},
+                tooltip: 'Reschedule',
+              ),
+              IconButton(
+                icon: const Icon(Icons.cancel_outlined, size: 20),
+                color: Colors.red,
+                onPressed: () {},
+                tooltip: 'Cancel',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
