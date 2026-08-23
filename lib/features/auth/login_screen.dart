@@ -14,6 +14,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  UserRole _selectedRole = UserRole.admin;
 
   @override
   void dispose() {
@@ -27,8 +28,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ref.read(authProvider.notifier).login(
             _emailController.text,
             _passwordController.text,
+            _selectedRole,
           );
-      context.go('/dashboard');
+      // Routing is handled by GoRouter redirect based on auth state
     }
   }
 
@@ -72,7 +74,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+                      SegmentedButton<UserRole>(
+                        segments: const [
+                          ButtonSegment<UserRole>(
+                            value: UserRole.admin,
+                            label: Text('Admin'),
+                            icon: Icon(Icons.admin_panel_settings),
+                          ),
+                          ButtonSegment<UserRole>(
+                            value: UserRole.doctor,
+                            label: Text('Doctor'),
+                            icon: Icon(Icons.medical_services),
+                          ),
+                        ],
+                        selected: <UserRole>{_selectedRole},
+                        onSelectionChanged: (Set<UserRole> newSelection) {
+                          setState(() {
+                            _selectedRole = newSelection.first;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
                       TextFormField(
                         controller: _emailController,
                         decoration: const InputDecoration(

@@ -9,6 +9,8 @@ import '../../features/doctors/doctors_screen.dart';
 import '../../features/patients/patients_screen.dart';
 import '../../features/appointments/appointments_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/doctor_dashboard/doctor_dashboard_shell.dart';
+import '../../features/doctor_dashboard/doctor_dashboard_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -45,16 +47,38 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      ShellRoute(
+        builder: (context, state, child) => DoctorDashboardShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/doctor-dashboard',
+            builder: (context, state) => const DoctorDashboardScreen(),
+          ),
+        ],
+      ),
     ],
     redirect: (BuildContext context, GoRouterState state) {
-      final bool isAuthenticated = authState;
+      final bool isAuthenticated = authState.isAuthenticated;
+      final UserRole role = authState.role;
       final bool isLoginRoute = state.uri.path == '/login';
 
       if (!isAuthenticated && !isLoginRoute) {
         return '/login';
       }
       if (isAuthenticated && isLoginRoute) {
-        return '/dashboard';
+        if (role == UserRole.admin) return '/dashboard';
+        if (role == UserRole.doctor) return '/doctor-dashboard';
+      }
+      
+      // Prevent role mixing
+      if (isAuthenticated) {
+        final path = state.uri.path;
+        if (role == UserRole.admin && path.startsWith('/doctor')) {
+          return '/dashboard';
+        }
+        if (role == UserRole.doctor && !path.startsWith('/doctor')) {
+          return '/doctor-dashboard';
+        }
       }
       return null;
     },
