@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/auth/register_hospital_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/dashboard/dashboard_shell.dart';
 import '../../features/hospital/hospital_settings_screen.dart';
@@ -21,6 +22,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterHospitalScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => DashboardShell(child: child),
@@ -61,8 +66,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final bool isAuthenticated = authState.isAuthenticated;
       final UserRole role = authState.role;
       final bool isLoginRoute = state.uri.path == '/login';
+      final bool isRegisterRoute = state.uri.path == '/register';
 
-      if (!isAuthenticated && !isLoginRoute) {
+      if (!isAuthenticated && !isLoginRoute && !isRegisterRoute) {
         return '/login';
       }
       if (isAuthenticated && isLoginRoute) {
