@@ -175,12 +175,7 @@ class _RecentAppointmentsTable extends StatelessWidget {
             DataColumn(label: Text('Status')),
             DataColumn(label: Text('Action')),
           ],
-          rows: [
-            _buildRow('Jane Doe', 'Dr. Smith', 'Cardiology', '09:00 AM', 'Completed', Colors.green),
-            _buildRow('John Roe', 'Dr. Adams', 'Neurology', '10:30 AM', 'In Progress', Colors.blue),
-            _buildRow('Alice Smith', 'Dr. Clark', 'Orthopedics', '11:15 AM', 'Waiting', Colors.orange),
-            _buildRow('Bob Brown', 'Dr. Smith', 'Cardiology', '01:00 PM', 'Scheduled', Colors.grey),
-          ],
+          rows: [],
         ),
       ),
     );

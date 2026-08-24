@@ -17,12 +17,7 @@ class DoctorDashboardScreen extends StatefulWidget {
 
 class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   Patient? _currentPatient;
-  List<Patient> _queue = [
-    Patient('Jane Smith', '09:00 AM', 'Follow up'),
-    Patient('Robert Johnson', '09:30 AM', 'General Consultation'),
-    Patient('Emily Davis', '10:00 AM', 'Blood test results'),
-    Patient('Michael Wilson', '10:30 AM', 'Fever and Cough'),
-  ];
+  List<Patient> _queue = [];
   List<Patient> _completed = [];
   List<Patient> _skipped = [];
 
