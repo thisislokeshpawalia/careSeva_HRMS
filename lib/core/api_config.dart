@@ -1,6 +1,6 @@
 class ApiConfig {
   // Set this to your Railway URL for production, e.g., 'https://your-app.up.railway.app'
-  static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = 'https://web-production-2da46.up.railway.app';
   
   // Helper for HTTP endpoints
   static String get httpBaseUrl => baseUrl;
