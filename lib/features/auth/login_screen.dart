@@ -23,14 +23,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      ref.read(authProvider.notifier).login(
+      final success = await ref.read(authProvider.notifier).login(
             _emailController.text,
             _passwordController.text,
             _selectedRole,
           );
-      // Routing is handled by GoRouter redirect based on auth state
+      if (success && mounted) {
+        // Routing is handled by GoRouter redirect based on auth state
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed')),
+        );
+      }
     }
   }
 

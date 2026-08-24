@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../auth/providers/auth_provider.dart';
+import '../../../core/api_config.dart';
 
 class Patient {
   final String name;
@@ -8,45 +14,117 @@ class Patient {
   Patient(this.name, this.time, this.reason);
 }
 
-class DoctorDashboardScreen extends StatefulWidget {
+class DoctorDashboardScreen extends ConsumerStatefulWidget {
   const DoctorDashboardScreen({super.key});
 
   @override
-  State<DoctorDashboardScreen> createState() => _DoctorDashboardScreenState();
+  ConsumerState<DoctorDashboardScreen> createState() => _DoctorDashboardScreenState();
 }
 
-class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
+class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   Patient? _currentPatient;
   List<Patient> _queue = [];
-  List<Patient> _completed = [];
-  List<Patient> _skipped = [];
+  int _currentToken = 0;
+  int _totalTokens = 0;
+  WebSocketChannel? _channel;
+  bool _isConnected = false;
 
-  void _callNext() {
-    if (_queue.isNotEmpty) {
-      setState(() {
-        if (_currentPatient != null) {
-          _completed.add(_currentPatient!);
-        }
-        _currentPatient = _queue.removeAt(0);
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initWebSocket();
+      _fetchQueueStatus();
+    });
+  }
+
+  void _initWebSocket() {
+    final authState = ref.read(authProvider);
+    final doctorId = authState.doctorId;
+    
+    if (doctorId != null) {
+      _channel = WebSocketChannel.connect(
+        Uri.parse('${ApiConfig.wsBaseUrl}/api/queue/ws/$doctorId'),
+      );
+      
+      setState(() => _isConnected = true);
+
+      _channel!.stream.listen((message) {
+        final data = jsonDecode(message);
+        setState(() {
+          if (data['event'] == 'new_patient') {
+            _totalTokens = data['total_tokens'];
+            _queue.add(Patient('Token #$_totalTokens', 'Now', 'Consultation'));
+          } else if (data['event'] == 'queue_advanced') {
+            _currentToken = data['current_token'];
+          }
+        });
+      }, onError: (error) {
+        setState(() => _isConnected = false);
+      }, onDone: () {
+        setState(() => _isConnected = false);
       });
     }
   }
 
-  void _skipNext() {
-    if (_queue.isNotEmpty) {
-      setState(() {
-        _skipped.add(_queue.removeAt(0));
-      });
+  Future<void> _fetchQueueStatus() async {
+    final authState = ref.read(authProvider);
+    final doctorId = authState.doctorId;
+    
+    if (doctorId != null) {
+      try {
+        final response = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/status'));
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          setState(() {
+            _currentToken = data['current_token'];
+            _totalTokens = data['total_tokens'];
+            
+            // Rebuild mock queue based on diff
+            _queue.clear();
+            for (int i = _currentToken + 1; i <= _totalTokens; i++) {
+              _queue.add(Patient('Token #$i', 'Waiting', 'Consultation'));
+            }
+          });
+        }
+      } catch (e) {
+        print(e);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _channel?.sink.close();
+    super.dispose();
+  }
+
+  Future<void> _callNext() async {
+    if (_queue.isNotEmpty || _currentToken < _totalTokens) {
+      final authState = ref.read(authProvider);
+      final doctorId = authState.doctorId;
+      
+      try {
+        final response = await http.post(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/next'));
+        if (response.statusCode == 200) {
+          setState(() {
+            if (_queue.isNotEmpty) {
+              _currentPatient = _queue.removeAt(0);
+            } else {
+              _currentPatient = Patient('Token #${_currentToken + 1}', 'Now', 'Consultation');
+            }
+          });
+        }
+      } catch (e) {
+        print(e);
+      }
     }
   }
 
   void _completeCurrent() {
-    if (_currentPatient != null) {
-      setState(() {
-        _completed.add(_currentPatient!);
-        _currentPatient = null;
-      });
-    }
+    setState(() {
+      _currentPatient = null;
+    });
   }
 
   @override
@@ -58,19 +136,47 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Doctor Overview & Queue',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D47A1),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Doctor Overview & Queue',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D47A1),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _isConnected ? Colors.green.withAlpha(50) : Colors.red.withAlpha(50),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isConnected ? Icons.wifi : Icons.wifi_off,
+                        color: _isConnected ? Colors.green : Colors.red,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isConnected ? 'Live' : 'Disconnected',
+                        style: TextStyle(
+                          color: _isConnected ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left Column: Current Patient & Actions
                 Expanded(
                   flex: 2,
                   child: Column(
@@ -82,7 +188,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   ),
                 ),
                 const SizedBox(width: 24),
-                // Right Column: Upcoming Queue
                 Expanded(
                   flex: 1,
                   child: _buildQueueList(),
@@ -117,36 +222,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'CURRENTLY CONSULTING',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              if (_currentPatient != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.access_time, color: Colors.white, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        _currentPatient!.time,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+          const Text(
+            'CURRENTLY CONSULTING',
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
           ),
           const SizedBox(height: 24),
           if (_currentPatient != null) ...[
@@ -160,7 +242,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Reason: ${_currentPatient!.reason}',
+              'Token: $_currentToken',
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -190,34 +272,19 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   Widget _buildActionButtons() {
+    bool hasMore = _currentToken < _totalTokens || _queue.isNotEmpty;
+    
     return Row(
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: _queue.isNotEmpty ? _callNext : null,
+            onPressed: hasMore ? _callNext : null,
             icon: const Icon(Icons.person_add_alt_1),
             label: const Text('Call Next Patient'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 20),
               backgroundColor: Colors.green.shade600,
               foregroundColor: Colors.white,
-              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _queue.isNotEmpty ? _skipNext : null,
-            icon: const Icon(Icons.skip_next),
-            label: const Text('Skip Next'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              foregroundColor: Colors.orange.shade800,
-              side: BorderSide(color: Colors.orange.shade800),
               textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -281,7 +348,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${_queue.length} waiting',
+                    '${_totalTokens - _currentToken} waiting',
                     style: const TextStyle(
                       color: Color(0xFF1565C0),
                       fontWeight: FontWeight.bold,
@@ -292,7 +359,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               ],
             ),
           ),
-          if (_queue.isEmpty)
+          if (_totalTokens - _currentToken <= 0)
             const Padding(
               padding: EdgeInsets.all(32.0),
               child: Center(
@@ -315,7 +382,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   leading: CircleAvatar(
                     backgroundColor: Colors.blue.shade50,
                     child: Text(
-                      '${index + 1}',
+                      '${_currentToken + index + 1}',
                       style: TextStyle(
                         color: Colors.blue.shade800,
                         fontWeight: FontWeight.bold,
@@ -327,13 +394,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(patient.reason),
-                  trailing: Text(
-                    patient.time,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
                 );
               },
             ),
