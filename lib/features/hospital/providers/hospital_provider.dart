@@ -45,3 +45,61 @@ final hospitalDepartmentsProvider = FutureProvider.autoDispose<List<dynamic>>((r
     return [];
   }
 });
+
+final hospitalActionsProvider = Provider((ref) => HospitalActions(ref));
+
+class HospitalActions {
+  final Ref ref;
+  HospitalActions(this.ref);
+
+  Future<bool> updateHospitalDetails(String hospitalId, Map<String, dynamic> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.httpBaseUrl}/api/hospitals/$hospitalId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 200) {
+        ref.invalidate(hospitalDetailsProvider);
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
+  }
+
+  Future<bool> addDepartment(String hospitalId, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.httpBaseUrl}/api/management/$hospitalId/departments'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 200) {
+        ref.invalidate(hospitalDepartmentsProvider);
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
+  }
+
+  Future<bool> updateDepartment(String hospitalId, String deptId, Map<String, dynamic> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.httpBaseUrl}/api/management/$hospitalId/departments/$deptId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 200) {
+        ref.invalidate(hospitalDepartmentsProvider);
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
+  }
+}
