@@ -24,6 +24,7 @@ class DoctorDashboardScreen extends ConsumerStatefulWidget {
 class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   Patient? _currentPatient;
   final List<Patient> _queue = [];
+  final List<Patient> _completedQueue = [];
   int _currentToken = 0;
   int _totalTokens = 0;
   WebSocketChannel? _channel;
@@ -96,8 +97,10 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
               
               if (token == _currentToken && state == 'CALLED') {
                 _currentPatient = Patient('$name (Token #$token)', 'Now', 'Consultation');
-              } else if (token > _currentToken && state == 'WAITING') {
+              } else if (state == 'WAITING' || (token > _currentToken && state != 'COMPLETED')) {
                 _queue.add(Patient('$name (Token #$token)', 'Waiting', 'Consultation'));
+              } else if (state == 'COMPLETED') {
+                _completedQueue.add(Patient('$name (Token #$token)', 'Completed', 'Consultation'));
               }
             }
           });
@@ -206,10 +209,15 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 24),
                 Expanded(
                   flex: 1,
-                  child: _buildQueueList(),
+                  child: Column(
+                    children: [
+                      _buildQueueList(),
+                      const SizedBox(height: 24),
+                      _buildCompletedList(),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -416,6 +424,84 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 );
               },
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletedList() {
+    if (_completedQueue.isEmpty) return const SizedBox.shrink();
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Recently Completed',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withAlpha(25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_completedQueue.length}',
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _completedQueue.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final patient = _completedQueue[index];
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: CircleAvatar(
+                  backgroundColor: Colors.green.shade50,
+                  child: const Icon(Icons.check, color: Colors.green),
+                ),
+                title: Text(
+                  patient.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.lineThrough,
+                    color: Colors.grey,
+                  ),
+                ),
+                subtitle: Text('Consultation Finished'),
+              );
+            },
+          ),
         ],
       ),
     );
