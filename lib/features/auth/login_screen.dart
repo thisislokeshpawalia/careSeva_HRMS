@@ -33,9 +33,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               _selectedRole,
             );
       } else {
+        // Normalize HopID and DocID
+        String rawHop = _emailController.text.toUpperCase().replaceAll(' ', '').replaceAll('-', '');
+        if (rawHop.startsWith('CARE') && rawHop.length > 4) {
+          rawHop = 'CARE-${rawHop.substring(4)}';
+        }
+        
+        String rawDoc = _passwordController.text.toUpperCase().replaceAll(' ', '').replaceAll('-', '');
+
         success = await ref.read(authProvider.notifier).doctorLogin(
-              _emailController.text, // Reusing email field for HopID
-              _passwordController.text, // Reusing password field for DocID
+              rawHop,
+              rawDoc,
             );
       }
       
@@ -145,6 +153,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ] else ...[
                         TextFormField(
                           controller: _emailController,
+                          textCapitalization: TextCapitalization.characters,
                           decoration: const InputDecoration(
                             labelText: 'Hospital ID (HopID)',
                             prefixIcon: Icon(Icons.business),
@@ -159,6 +168,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _passwordController,
+                          textCapitalization: TextCapitalization.characters,
                           decoration: const InputDecoration(
                             labelText: 'Doctor ID (DocID)',
                             prefixIcon: Icon(Icons.badge),
