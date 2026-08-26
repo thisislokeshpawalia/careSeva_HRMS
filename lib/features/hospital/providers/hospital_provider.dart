@@ -20,7 +20,7 @@ final hospitalDetailsProvider = FutureProvider.autoDispose<Map<String, dynamic>?
     }
     return null;
   } catch (e) {
-    print('Error fetching hospital details: $e');
+    // print('Error fetching hospital details: $e');
     return null;
   }
 });
@@ -41,7 +41,7 @@ final hospitalDepartmentsProvider = FutureProvider.autoDispose<List<dynamic>>((r
     }
     return [];
   } catch (e) {
-    print('Error fetching departments: $e');
+    // print('Error fetching hospital departments: $e');
     return [];
   }
 });

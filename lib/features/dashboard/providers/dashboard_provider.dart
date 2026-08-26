@@ -36,7 +36,7 @@ final dashboardStatsProvider = FutureProvider.autoDispose<Map<String, dynamic>?>
     }
     return null;
   } catch (e) {
-    print('Error fetching dashboard stats: $e');
+    // print('Error fetching dashboard stats: $e');
     return null;
   }
 });

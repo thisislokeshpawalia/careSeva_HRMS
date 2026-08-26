@@ -23,7 +23,7 @@ class DoctorDashboardScreen extends ConsumerStatefulWidget {
 
 class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   Patient? _currentPatient;
-  List<Patient> _queue = [];
+  final List<Patient> _queue = [];
   int _currentToken = 0;
   int _totalTokens = 0;
   WebSocketChannel? _channel;
@@ -88,7 +88,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           });
         }
       } catch (e) {
-        print(e);
+        // print(e);
       }
     }
   }
@@ -116,7 +116,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           });
         }
       } catch (e) {
-        print(e);
+        // print(e);
       }
     }
   }

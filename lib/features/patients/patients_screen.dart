@@ -90,46 +90,5 @@ class PatientsScreen extends StatelessWidget {
     );
   }
 
-  DataRow _buildPatientRow(String id, String name, String details, String phone, String lastVisit) {
-    return DataRow(
-      cells: [
-        DataCell(Text(id, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1565C0)))),
-        DataCell(
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: const Color(0xFFE3F2FD),
-                child: Text(name[0], style: const TextStyle(color: Color(0xFF1565C0), fontSize: 14)),
-              ),
-              const SizedBox(width: 12),
-              Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
-            ],
-          ),
-        ),
-        DataCell(Text(details, style: TextStyle(color: Colors.grey.shade600))),
-        DataCell(Text(phone)),
-        DataCell(Text(lastVisit)),
-        DataCell(
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.visibility_outlined, size: 20),
-                color: const Color(0xFF1565C0),
-                onPressed: () {},
-                tooltip: 'View Profile',
-              ),
-              IconButton(
-                icon: const Icon(Icons.history_edu_outlined, size: 20),
-                color: const Color(0xFF00BFA5),
-                onPressed: () {},
-                tooltip: 'EMR History',
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+
 }

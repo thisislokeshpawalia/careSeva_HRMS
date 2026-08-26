@@ -62,7 +62,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return false;
     } catch (e) {
-      print('Login error: $e');
+      // print('Login error: $e');
       return false;
     }
   }

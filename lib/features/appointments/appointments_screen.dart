@@ -103,55 +103,5 @@ class AppointmentsScreen extends StatelessWidget {
     );
   }
 
-  DataRow _buildAppointmentRow(String time, String patient, String doctor, String type, String status, Color statusColor) {
-    final isOPD = type.contains('OPD');
-    return DataRow(
-      cells: [
-        DataCell(Text(time, style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(patient, style: const TextStyle(fontWeight: FontWeight.w500))),
-        DataCell(Text(doctor)),
-        DataCell(
-          Row(
-            children: [
-              if (isOPD) const Icon(Icons.directions_walk, size: 16, color: Colors.orange) else const Icon(Icons.event_available, size: 16, color: Color(0xFF1565C0)),
-              const SizedBox(width: 8),
-              Text(type),
-            ],
-          ),
-        ),
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withAlpha(25),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.w500, fontSize: 13),
-            ),
-          ),
-        ),
-        DataCell(
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 20),
-                color: const Color(0xFF1565C0),
-                onPressed: () {},
-                tooltip: 'Reschedule',
-              ),
-              IconButton(
-                icon: const Icon(Icons.cancel_outlined, size: 20),
-                color: Colors.red,
-                onPressed: () {},
-                tooltip: 'Cancel',
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+
 }
