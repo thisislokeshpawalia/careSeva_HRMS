@@ -19,90 +19,101 @@ class DoctorsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) {
         bool isSaving = false;
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            final deptsAsync = ref.watch(hospitalDepartmentsProvider);
+        return Consumer(
+          builder: (ctx, dialogRef, _) {
+            return StatefulBuilder(
+              builder: (ctx, setState) {
+                final deptsAsync = dialogRef.watch(hospitalDepartmentsProvider);
 
-            return AlertDialog(
-              title: Text(isEdit ? 'Edit Doctor' : 'Add Doctor'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Doctor Name')),
-                    const SizedBox(height: 16),
-                    TextField(controller: specCtrl, decoration: const InputDecoration(labelText: 'Specialization')),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: expCtrl, 
-                      decoration: const InputDecoration(labelText: 'Experience (Years)'),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    deptsAsync.when(
-                      data: (depts) {
-                        if (depts.isEmpty) return const Text('No departments available. Add one first.');
-                        if (selectedDeptId == null && depts.isNotEmpty) selectedDeptId = depts.first['id'];
-                        return DropdownButtonFormField<String>(
-                          initialValue: selectedDeptId,
-                          decoration: const InputDecoration(labelText: 'Department'),
-                          items: depts.map<DropdownMenuItem<String>>((d) {
-                            return DropdownMenuItem<String>(
-                              value: d['id'],
-                              child: Text(d['name']),
+                return AlertDialog(
+                  title: Text(isEdit ? 'Edit Doctor' : 'Add Doctor'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Doctor Name')),
+                        const SizedBox(height: 16),
+                        TextField(controller: specCtrl, decoration: const InputDecoration(labelText: 'Specialization')),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: expCtrl, 
+                          decoration: const InputDecoration(labelText: 'Experience (Years)'),
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 16),
+                        deptsAsync.when(
+                          data: (depts) {
+                            if (depts.isEmpty) return const Text('No departments available. Add one first.');
+                            if (selectedDeptId == null && depts.isNotEmpty) {
+                              // Wrap in microtask to avoid modifying state during build
+                              Future.microtask(() {
+                                if (selectedDeptId == null) {
+                                  setState(() => selectedDeptId = depts.first['id']);
+                                }
+                              });
+                            }
+                            return DropdownButtonFormField<String>(
+                              value: selectedDeptId,
+                              decoration: const InputDecoration(labelText: 'Department'),
+                              items: depts.map<DropdownMenuItem<String>>((d) {
+                                return DropdownMenuItem<String>(
+                                  value: d['id'],
+                                  child: Text(d['name']),
+                                );
+                              }).toList(),
+                              onChanged: (val) => setState(() => selectedDeptId = val),
                             );
-                          }).toList(),
-                          onChanged: (val) => setState(() => selectedDeptId = val),
-                        );
-                      },
-                      loading: () => const CircularProgressIndicator(),
-                      error: (e, s) => Text('Error: $e'),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: statusCtrl.text.isEmpty ? 'ACTIVE' : statusCtrl.text,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: const [
-                        DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
-                        DropdownMenuItem(value: 'INACTIVE', child: Text('Inactive')),
-                        DropdownMenuItem(value: 'ON_LEAVE', child: Text('On Leave')),
+                          },
+                          loading: () => const CircularProgressIndicator(),
+                          error: (e, s) => Text('Error: $e'),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: statusCtrl.text.isEmpty ? 'ACTIVE' : statusCtrl.text,
+                          decoration: const InputDecoration(labelText: 'Status'),
+                          items: const [
+                            DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                            DropdownMenuItem(value: 'INACTIVE', child: Text('Inactive')),
+                            DropdownMenuItem(value: 'ON_LEAVE', child: Text('On Leave')),
+                          ],
+                          onChanged: (val) => setState(() => statusCtrl.text = val!),
+                        ),
                       ],
-                      onChanged: (val) => setState(() => statusCtrl.text = val!),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                    ElevatedButton(
+                      onPressed: isSaving ? null : () async {
+                        if (nameCtrl.text.isEmpty || specCtrl.text.isEmpty || selectedDeptId == null) return;
+                        setState(() => isSaving = true);
+                        final data = {
+                          'name': nameCtrl.text,
+                          'specialization': specCtrl.text,
+                          'experience_years': int.tryParse(expCtrl.text) ?? 0,
+                          'department_id': selectedDeptId,
+                          'status': statusCtrl.text,
+                          'qualification': doctor?['qualification'] ?? 'MBBS', // default for now
+                        };
+                        final hospitalId = dialogRef.read(authProvider).hospitalId!;
+                        final success = isEdit
+                            ? await dialogRef.read(doctorActionsProvider).updateDoctor(hospitalId, doctor['id'], data)
+                            : await dialogRef.read(doctorActionsProvider).addDoctor(hospitalId, data);
+                        
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(success ? 'Doctor saved successfully' : 'Failed to save doctor')),
+                          );
+                        }
+                      },
+                      child: isSaving 
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                          : const Text('Save'),
                     ),
                   ],
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                ElevatedButton(
-                  onPressed: isSaving ? null : () async {
-                    if (nameCtrl.text.isEmpty || specCtrl.text.isEmpty || selectedDeptId == null) return;
-                    setState(() => isSaving = true);
-                    final data = {
-                      'name': nameCtrl.text,
-                      'specialization': specCtrl.text,
-                      'experience_years': int.tryParse(expCtrl.text) ?? 0,
-                      'department_id': selectedDeptId,
-                      'status': statusCtrl.text,
-                      'qualification': doctor?['qualification'] ?? 'MBBS', // default for now
-                    };
-                    final hospitalId = ref.read(authProvider).hospitalId!;
-                    final success = isEdit
-                        ? await ref.read(doctorActionsProvider).updateDoctor(hospitalId, doctor['id'], data)
-                        : await ref.read(doctorActionsProvider).addDoctor(hospitalId, data);
-                    
-                    if (ctx.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(success ? 'Doctor saved successfully' : 'Failed to save doctor')),
-                      );
-                    }
-                  },
-                  child: isSaving 
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                      : const Text('Save'),
-                ),
-              ],
+                );
+              }
             );
           }
         );
@@ -190,8 +201,7 @@ class DoctorsScreen extends ConsumerWidget {
             Expanded(
               child: doctorsAsync.when(
                 data: (doctors) {
-                  final activeDoctors = doctors.where((d) => d['status'] != 'INACTIVE').toList();
-                  if (activeDoctors.isEmpty) {
+                  if (doctors.isEmpty) {
                     return const Center(child: Text('No doctors found. Please add a doctor.'));
                   }
                   return GridView.builder(
@@ -199,11 +209,11 @@ class DoctorsScreen extends ConsumerWidget {
                       maxCrossAxisExtent: 350,
                       crossAxisSpacing: 24,
                       mainAxisSpacing: 24,
-                      childAspectRatio: 0.85,
+                      childAspectRatio: 0.75, // Adjusted to prevent bottom overflow
                     ),
-                    itemCount: activeDoctors.length,
+                    itemCount: doctors.length,
                     itemBuilder: (context, index) {
-                      final doc = activeDoctors[index];
+                      final doc = doctors[index];
                       return _DoctorCard(
                         doctor: doc,
                         onEdit: () => _showAddEditDoctorDialog(context, ref, doc),
@@ -237,8 +247,25 @@ class _DoctorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = doctor['status'] ?? 'ACTIVE';
-    final isAvailable = status == 'ACTIVE';
-    final statusDisplay = isAvailable ? 'Available' : 'On Leave';
+    
+    Color statusColor;
+    String statusDisplay;
+    
+    switch (status) {
+      case 'ON_LEAVE':
+        statusColor = Colors.orange;
+        statusDisplay = 'On Leave';
+        break;
+      case 'INACTIVE':
+        statusColor = Colors.red;
+        statusDisplay = 'Inactive';
+        break;
+      case 'ACTIVE':
+      default:
+        statusColor = Colors.green;
+        statusDisplay = 'Available';
+        break;
+    }
 
     return Card(
       child: Padding(
@@ -267,13 +294,13 @@ class _DoctorCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: isAvailable ? Colors.green.withAlpha(25) : Colors.orange.withAlpha(25),
+                color: statusColor.withAlpha(25),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 statusDisplay,
                 style: TextStyle(
-                  color: isAvailable ? Colors.green : Colors.orange,
+                  color: statusColor,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),

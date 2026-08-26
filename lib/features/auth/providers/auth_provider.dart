@@ -67,6 +67,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> doctorLogin(String hopId, String docId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.httpBaseUrl}/api/auth/doctor-login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'hop_id': hopId, 'doc_id': docId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        state = state.copyWith(
+          isAuthenticated: true, 
+          role: UserRole.doctor,
+          userId: data['id'],
+          hospitalId: data['hospital_id'],
+          doctorId: data['id'],
+        );
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   void logout() {
     state = const AuthState();
   }

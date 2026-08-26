@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
 import '../../core/api_config.dart';
 
 class RegisterHospitalScreen extends StatefulWidget {
@@ -22,7 +23,10 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
   final _stateController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _latController = TextEditingController();
+  final _lngController = TextEditingController();
   bool _isLoading = false;
+  bool _fetchingLocation = false;
 
   @override
   void dispose() {
@@ -35,6 +39,8 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
     _stateController.dispose();
     _pincodeController.dispose();
     _passwordController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
     super.dispose();
   }
 
@@ -52,6 +58,8 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
         "city": _cityController.text,
         "state": _stateController.text,
         "pincode": _pincodeController.text,
+        "latitude": double.tryParse(_latController.text),
+        "longitude": double.tryParse(_lngController.text),
         "specialties": [],
         "password": _passwordController.text
       };
@@ -64,11 +72,42 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
         );
 
         if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = jsonDecode(response.body);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registration successful! Waiting for Admin Approval.')),
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Registration Successful!'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Your facility has been registered and is pending approval.'),
+                    const SizedBox(height: 16),
+                    const Text('Please save your unique Hospital ID (HopID). You and your doctors will need it to login:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      color: Colors.blue.shade50,
+                      child: SelectableText(
+                        data['hop_id'] ?? 'UNKNOWN',
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      context.go('/login');
+                    },
+                    child: const Text('Go to Login'),
+                  )
+                ],
+              ),
             );
-            context.go('/login');
           }
         } else {
           final error = jsonDecode(response.body);
@@ -87,6 +126,51 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _fetchLocation() async {
+    setState(() => _fetchingLocation = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied');
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied.');
+      } 
+
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
+      );
+      
+      setState(() {
+        _latController.text = position.latitude.toString();
+        _lngController.text = position.longitude.toString();
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location fetched successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching location: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _fetchingLocation = false);
     }
   }
 
@@ -203,6 +287,34 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _latController,
+                              decoration: const InputDecoration(labelText: 'Latitude', prefixIcon: Icon(Icons.explore)),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _lngController,
+                              decoration: const InputDecoration(labelText: 'Longitude', prefixIcon: Icon(Icons.explore)),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _fetchingLocation ? null : _fetchLocation,
+                        icon: _fetchingLocation 
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                          : const Icon(Icons.my_location),
+                        label: Text(_fetchingLocation ? 'Fetching...' : 'Fetch Current Location'),
                       ),
                       const SizedBox(height: 32),
                       _isLoading 

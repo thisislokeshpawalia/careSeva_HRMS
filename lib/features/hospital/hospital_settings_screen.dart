@@ -135,32 +135,57 @@ class _GeneralSettingsFormState extends ConsumerState<_GeneralSettingsForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'General Information',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'General Information',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.business, color: Colors.blue, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'HopID: ${widget.details['hop_id'] ?? 'N/A'}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
+          const Text('Note: General information cannot be edited after registration.', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+          const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
               final isMobile = constraints.maxWidth < 600;
               if (isMobile) {
                 return Column(
                   children: [
-                    TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Hospital Name', prefixIcon: Icon(Icons.local_hospital_outlined))),
+                    TextFormField(controller: _nameCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Hospital Name', prefixIcon: Icon(Icons.local_hospital_outlined))),
                     const SizedBox(height: 24),
-                    TextFormField(controller: _contactCtrl, decoration: const InputDecoration(labelText: 'Contact Person (Admin)', prefixIcon: Icon(Icons.person_outline))),
+                    TextFormField(controller: _contactCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Contact Person (Admin)', prefixIcon: Icon(Icons.person_outline))),
                     const SizedBox(height: 24),
-                    TextFormField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined))),
+                    TextFormField(controller: _emailCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined))),
                     const SizedBox(height: 24),
-                    TextFormField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone_outlined))),
+                    TextFormField(controller: _phoneCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone_outlined))),
                     const SizedBox(height: 24),
-                    TextFormField(controller: _cityCtrl, decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined))),
+                    TextFormField(controller: _cityCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined))),
                     const SizedBox(height: 24),
-                    TextFormField(controller: _stateCtrl, decoration: const InputDecoration(labelText: 'State', prefixIcon: Icon(Icons.map_outlined))),
+                    TextFormField(controller: _stateCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'State', prefixIcon: Icon(Icons.map_outlined))),
                     const SizedBox(height: 24),
-                    TextFormField(controller: _addressCtrl, decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on_outlined))),
+                    TextFormField(controller: _addressCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on_outlined))),
                     const SizedBox(height: 24),
-                    TextFormField(controller: _pincodeCtrl, decoration: const InputDecoration(labelText: 'Pincode', prefixIcon: Icon(Icons.pin_drop_outlined))),
+                    TextFormField(controller: _pincodeCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Pincode', prefixIcon: Icon(Icons.pin_drop_outlined))),
                   ],
                 );
               }
@@ -168,33 +193,33 @@ class _GeneralSettingsFormState extends ConsumerState<_GeneralSettingsForm> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Hospital Name', prefixIcon: Icon(Icons.local_hospital_outlined)))),
+                      Expanded(child: TextFormField(controller: _nameCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Hospital Name', prefixIcon: Icon(Icons.local_hospital_outlined)))),
                       const SizedBox(width: 24),
-                      Expanded(child: TextFormField(controller: _contactCtrl, decoration: const InputDecoration(labelText: 'Contact Person (Admin)', prefixIcon: Icon(Icons.person_outline)))),
+                      Expanded(child: TextFormField(controller: _contactCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Contact Person (Admin)', prefixIcon: Icon(Icons.person_outline)))),
                     ],
                   ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(child: TextFormField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)))),
+                      Expanded(child: TextFormField(controller: _emailCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)))),
                       const SizedBox(width: 24),
-                      Expanded(child: TextFormField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone_outlined)))),
+                      Expanded(child: TextFormField(controller: _phoneCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone_outlined)))),
                     ],
                   ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(child: TextFormField(controller: _cityCtrl, decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined)))),
+                      Expanded(child: TextFormField(controller: _cityCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined)))),
                       const SizedBox(width: 24),
-                      Expanded(child: TextFormField(controller: _stateCtrl, decoration: const InputDecoration(labelText: 'State', prefixIcon: Icon(Icons.map_outlined)))),
+                      Expanded(child: TextFormField(controller: _stateCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'State', prefixIcon: Icon(Icons.map_outlined)))),
                     ],
                   ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(flex: 2, child: TextFormField(controller: _addressCtrl, decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on_outlined)))),
+                      Expanded(flex: 2, child: TextFormField(controller: _addressCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on_outlined)))),
                       const SizedBox(width: 24),
-                      Expanded(flex: 1, child: TextFormField(controller: _pincodeCtrl, decoration: const InputDecoration(labelText: 'Pincode', prefixIcon: Icon(Icons.pin_drop_outlined)))),
+                      Expanded(flex: 1, child: TextFormField(controller: _pincodeCtrl, readOnly: true, decoration: const InputDecoration(labelText: 'Pincode', prefixIcon: Icon(Icons.pin_drop_outlined)))),
                     ],
                   ),
                 ],
@@ -202,15 +227,6 @@ class _GeneralSettingsFormState extends ConsumerState<_GeneralSettingsForm> {
             },
           ),
           const SizedBox(height: 24),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: _isSaving ? null : _saveChanges,
-              child: _isSaving 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Save Changes'),
-            ),
-          ),
         ],
       ),
     );

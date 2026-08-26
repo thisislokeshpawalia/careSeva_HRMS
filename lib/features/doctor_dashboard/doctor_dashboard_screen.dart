@@ -54,9 +54,11 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
         setState(() {
           if (data['event'] == 'new_patient') {
             _totalTokens = data['total_tokens'];
-            _queue.add(Patient('Token #$_totalTokens', 'Now', 'Consultation'));
+            // Re-fetch queue to get the new patient name
+            _fetchQueueStatus();
           } else if (data['event'] == 'queue_advanced') {
             _currentToken = data['current_token'];
+            _fetchQueueStatus();
           }
         });
       }, onError: (error) {
@@ -73,17 +75,30 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     
     if (doctorId != null) {
       try {
-        final response = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/status'));
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
+        final statusRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/status'));
+        final entriesRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/entries'));
+        
+        if (statusRes.statusCode == 200 && entriesRes.statusCode == 200) {
+          final statusData = jsonDecode(statusRes.body);
+          final List<dynamic> entriesData = jsonDecode(entriesRes.body);
+          
           setState(() {
-            _currentToken = data['current_token'];
-            _totalTokens = data['total_tokens'];
+            _currentToken = statusData['current_token'];
+            _totalTokens = statusData['total_tokens'];
             
-            // Rebuild mock queue based on diff
             _queue.clear();
-            for (int i = _currentToken + 1; i <= _totalTokens; i++) {
-              _queue.add(Patient('Token #$i', 'Waiting', 'Consultation'));
+            _currentPatient = null;
+            
+            for (var entry in entriesData) {
+              int token = entry['token_number'];
+              String name = entry['patient_name'] ?? 'Unknown';
+              String state = entry['status'];
+              
+              if (token == _currentToken && state == 'CALLED') {
+                _currentPatient = Patient('$name (Token #$token)', 'Now', 'Consultation');
+              } else if (token > _currentToken && state == 'WAITING') {
+                _queue.add(Patient('$name (Token #$token)', 'Waiting', 'Consultation'));
+              }
             }
           });
         }
@@ -107,13 +122,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
       try {
         final response = await http.post(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/next'));
         if (response.statusCode == 200) {
-          setState(() {
-            if (_queue.isNotEmpty) {
-              _currentPatient = _queue.removeAt(0);
-            } else {
-              _currentPatient = Patient('Token #${_currentToken + 1}', 'Now', 'Consultation');
-            }
-          });
+          _fetchQueueStatus();
         }
       } catch (e) {
         // print(e);
@@ -121,10 +130,20 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     }
   }
 
-  void _completeCurrent() {
-    setState(() {
-      _currentPatient = null;
-    });
+  Future<void> _completeCurrent() async {
+    if (_currentPatient != null) {
+      final authState = ref.read(authProvider);
+      final doctorId = authState.doctorId;
+      
+      try {
+        final response = await http.post(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/complete'));
+        if (response.statusCode == 200) {
+          _fetchQueueStatus();
+        }
+      } catch (e) {
+        // print(e);
+      }
+    }
   }
 
   @override

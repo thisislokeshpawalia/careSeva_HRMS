@@ -25,16 +25,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      final success = await ref.read(authProvider.notifier).login(
-            _emailController.text,
-            _passwordController.text,
-            _selectedRole,
-          );
+      bool success = false;
+      if (_selectedRole == UserRole.admin) {
+        success = await ref.read(authProvider.notifier).login(
+              _emailController.text,
+              _passwordController.text,
+              _selectedRole,
+            );
+      } else {
+        success = await ref.read(authProvider.notifier).doctorLogin(
+              _emailController.text, // Reusing email field for HopID
+              _passwordController.text, // Reusing password field for DocID
+            );
+      }
+      
       if (success && mounted) {
         // Routing is handled by GoRouter redirect based on auth state
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login failed')),
+          const SnackBar(content: Text('Login failed. Check your credentials.')),
         );
       }
     }
@@ -98,48 +107,81 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onSelectionChanged: (Set<UserRole> newSelection) {
                           setState(() {
                             _selectedRole = newSelection.first;
+                            _emailController.clear();
+                            _passwordController.clear();
                           });
                         },
                       ),
                       const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email Address',
-                          prefixIcon: Icon(Icons.email_outlined),
+                      if (_selectedRole == UserRole.admin) ...[
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: const InputDecoration(
+                            labelText: 'Email Address',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your email';
+                            }
+                            return null;
+                          },
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          prefixIcon: Icon(Icons.lock_outline),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: const InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: Icon(Icons.lock_outline),
+                          ),
+                          obscureText: true,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your password';
+                            }
+                            return null;
+                          },
                         ),
-                        obscureText: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
-                          }
-                          return null;
-                        },
-                      ),
+                      ] else ...[
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: const InputDecoration(
+                            labelText: 'Hospital ID (HopID)',
+                            prefixIcon: Icon(Icons.business),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your HopID';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: const InputDecoration(
+                            labelText: 'Doctor ID (DocID)',
+                            prefixIcon: Icon(Icons.badge),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your DocID';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _login,
                         child: const Text('Sign In'),
                       ),
                       const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () => context.go('/register'),
-                        child: const Text('Register new Hospital/Clinic'),
-                      ),
+                      if (_selectedRole == UserRole.admin)
+                        TextButton(
+                          onPressed: () => context.go('/register'),
+                          child: const Text('Register new Hospital/Clinic'),
+                        ),
                     ],
                   ),
                 ),

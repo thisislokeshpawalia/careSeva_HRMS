@@ -79,10 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Prevent role mixing
       if (isAuthenticated) {
         final path = state.uri.path;
-        if (role == UserRole.admin && path.startsWith('/doctor')) {
+        if (role == UserRole.admin && path.startsWith('/doctor-dashboard')) {
           return '/dashboard';
         }
-        if (role == UserRole.doctor && !path.startsWith('/doctor')) {
+        if (role == UserRole.doctor && !path.startsWith('/doctor-dashboard')) {
           return '/doctor-dashboard';
         }
       }
