@@ -102,15 +102,14 @@ class _DoctorSidebar extends ConsumerWidget {
                 _SidebarItem(
                   icon: Icons.dashboard_outlined,
                   title: 'Overview',
-                  isSelected: true,
+                  isSelected: GoRouterState.of(context).uri.path == '/doctor-dashboard',
                   onTap: () => context.go('/doctor-dashboard'),
                 ),
                 _SidebarItem(
                   icon: Icons.people_outline,
                   title: 'My Patients',
-                  onTap: () {
-                    // Navigate to doctor's patients
-                  },
+                  isSelected: GoRouterState.of(context).uri.path == '/doctor-dashboard/patients',
+                  onTap: () => context.go('/doctor-dashboard/patients'),
                 ),
                 _SidebarItem(
                   icon: Icons.calendar_today_outlined,

@@ -12,6 +12,7 @@ import '../../features/appointments/appointments_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/doctor_dashboard/doctor_dashboard_shell.dart';
 import '../../features/doctor_dashboard/doctor_dashboard_screen.dart';
+import '../../features/doctor_dashboard/doctor_patients_history_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -58,6 +59,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/doctor-dashboard',
             builder: (context, state) => const DoctorDashboardScreen(),
+          ),
+          GoRoute(
+            path: '/doctor-dashboard/patients',
+            builder: (context, state) => const DoctorPatientsHistoryScreen(),
           ),
         ],
       ),
