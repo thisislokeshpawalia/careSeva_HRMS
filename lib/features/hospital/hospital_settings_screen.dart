@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'providers/hospital_provider.dart';
 
 class HospitalSettingsScreen extends StatelessWidget {
   const HospitalSettingsScreen({super.key});
@@ -30,84 +32,182 @@ class HospitalSettingsScreen extends StatelessWidget {
   }
 }
 
-class _GeneralSettingsCard extends StatelessWidget {
+class _GeneralSettingsCard extends ConsumerWidget {
   const _GeneralSettingsCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hospitalDetailsAsync = ref.watch(hospitalDetailsProvider);
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'General Information',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isMobile = constraints.maxWidth < 600;
-                if (isMobile) {
-                  return Column(
-                    children: [
-                      TextFormField(
-                        initialValue: 'City General Hospital',
-                        decoration: const InputDecoration(labelText: 'Hospital Name'),
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        initialValue: '+1 234 567 8900',
-                        decoration: const InputDecoration(labelText: 'Contact Number'),
-                      ),
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        initialValue: 'City General Hospital',
-                        decoration: const InputDecoration(labelText: 'Hospital Name'),
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: TextFormField(
-                        initialValue: '+1 234 567 8900',
-                        decoration: const InputDecoration(labelText: 'Contact Number'),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              initialValue: '123 Health Avenue, Medical District, NY',
-              decoration: const InputDecoration(labelText: 'Address'),
-            ),
-            const SizedBox(height: 24),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () {},
-                child: const Text('Save Changes'),
-              ),
-            ),
-          ],
+        child: hospitalDetailsAsync.when(
+          data: (details) {
+            if (details == null) {
+              return const Center(child: Text('Failed to load hospital details'));
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'General Information',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 24),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 600;
+                    if (isMobile) {
+                      return Column(
+                        children: [
+                          TextFormField(
+                            initialValue: details['name'] ?? '',
+                            decoration: const InputDecoration(labelText: 'Hospital Name', prefixIcon: Icon(Icons.local_hospital_outlined)),
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            initialValue: details['contact_person'] ?? '',
+                            decoration: const InputDecoration(labelText: 'Contact Person (Admin)', prefixIcon: Icon(Icons.person_outline)),
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            initialValue: details['email'] ?? '',
+                            decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)),
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            initialValue: details['phone'] ?? '',
+                            decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone_outlined)),
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            initialValue: details['city'] ?? '',
+                            decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined)),
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            initialValue: details['state'] ?? '',
+                            decoration: const InputDecoration(labelText: 'State', prefixIcon: Icon(Icons.map_outlined)),
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            initialValue: details['address'] ?? '',
+                            decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on_outlined)),
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            initialValue: details['pincode'] ?? '',
+                            decoration: const InputDecoration(labelText: 'Pincode', prefixIcon: Icon(Icons.pin_drop_outlined)),
+                          ),
+                        ],
+                      );
+                    }
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: details['name'] ?? '',
+                                decoration: const InputDecoration(labelText: 'Hospital Name', prefixIcon: Icon(Icons.local_hospital_outlined)),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: details['contact_person'] ?? '',
+                                decoration: const InputDecoration(labelText: 'Contact Person (Admin)', prefixIcon: Icon(Icons.person_outline)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: details['email'] ?? '',
+                                decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: details['phone'] ?? '',
+                                decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone_outlined)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: details['city'] ?? '',
+                                decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined)),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: details['state'] ?? '',
+                                decoration: const InputDecoration(labelText: 'State', prefixIcon: Icon(Icons.map_outlined)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                initialValue: details['address'] ?? '',
+                                decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on_outlined)),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              flex: 1,
+                              child: TextFormField(
+                                initialValue: details['pincode'] ?? '',
+                                decoration: const InputDecoration(labelText: 'Pincode', prefixIcon: Icon(Icons.pin_drop_outlined)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    child: const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(child: Text('Error: $error')),
         ),
       ),
     );
   }
 }
 
-class _DepartmentsCard extends StatelessWidget {
+class _DepartmentsCard extends ConsumerWidget {
   const _DepartmentsCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final deptsAsync = ref.watch(hospitalDepartmentsProvider);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -129,15 +229,21 @@ class _DepartmentsCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            ListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildDeptTile('Cardiology', 'Heart & Vascular', 12),
-                _buildDeptTile('Neurology', 'Brain & Nerves', 8),
-                _buildDeptTile('Orthopedics', 'Bones & Joints', 15),
-                _buildDeptTile('Pediatrics', 'Children & Infants', 20),
-              ],
+            deptsAsync.when(
+              data: (depts) {
+                if (depts.isEmpty) {
+                  return const Text('No departments found.');
+                }
+                return ListView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: depts.map((d) {
+                    return _buildDeptTile(d['name'] ?? 'Unknown', d['specialty'] ?? '', 0);
+                  }).toList(),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(child: Text('Error: $error')),
             ),
           ],
         ),

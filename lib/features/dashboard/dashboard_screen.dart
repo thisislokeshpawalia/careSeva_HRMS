@@ -1,75 +1,89 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'providers/dashboard_provider.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsyncValue = ref.watch(dashboardStatsProvider);
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dashboard Overview',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF0D47A1),
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Welcome back! Here is what is happening today.',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 32),
-            Wrap(
-              spacing: 24,
-              runSpacing: 24,
+      body: statsAsyncValue.when(
+        data: (stats) {
+          if (stats == null) {
+            return const Center(child: Text('Failed to load dashboard stats'));
+          }
+          
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _StatCard(
-                  title: 'Total Patients',
-                  value: '1,482',
-                  trend: '+12% this month',
-                  icon: Icons.people_alt_outlined,
-                  color: const Color(0xFF1565C0),
+                Text(
+                  'Dashboard Overview',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0D47A1),
+                      ),
                 ),
-                _StatCard(
-                  title: 'Appointments Today',
-                  value: '146',
-                  trend: '24 pending',
-                  icon: Icons.calendar_month_outlined,
-                  color: const Color(0xFF00BFA5),
+                const SizedBox(height: 8),
+                Text(
+                  'Welcome back! Here is what is happening today.',
+                  style: TextStyle(color: Colors.grey.shade600),
                 ),
-                _StatCard(
-                  title: 'Available Doctors',
-                  value: '38',
-                  trend: 'Out of 50',
-                  icon: Icons.medical_services_outlined,
-                  color: const Color(0xFF00B0FF),
+                const SizedBox(height: 32),
+                Wrap(
+                  spacing: 24,
+                  runSpacing: 24,
+                  children: [
+                    _StatCard(
+                      title: 'Total Patients',
+                      value: stats['total_patients'].toString(),
+                      trend: 'Total Registered',
+                      icon: Icons.people_alt_outlined,
+                      color: const Color(0xFF1565C0),
+                    ),
+                    _StatCard(
+                      title: 'Appointments Today',
+                      value: stats['appointments_today'].toString(),
+                      trend: 'Today',
+                      icon: Icons.calendar_month_outlined,
+                      color: const Color(0xFF00BFA5),
+                    ),
+                    _StatCard(
+                      title: 'Available Doctors',
+                      value: stats['available_doctors'].toString(),
+                      trend: 'Active',
+                      icon: Icons.medical_services_outlined,
+                      color: const Color(0xFF00B0FF),
+                    ),
+                    _StatCard(
+                      title: 'Today\'s Revenue',
+                      value: '\$${stats['todays_revenue']}',
+                      trend: 'Today',
+                      icon: Icons.payments_outlined,
+                      color: const Color(0xFF5E35B1),
+                    ),
+                  ],
                 ),
-                _StatCard(
-                  title: 'Today\'s Revenue',
-                  value: '\$12,450',
-                  trend: '+5% vs yesterday',
-                  icon: Icons.payments_outlined,
-                  color: const Color(0xFF5E35B1),
+                const SizedBox(height: 48),
+                Text(
+                  'Recent Appointments',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
+                const SizedBox(height: 16),
+                _RecentAppointmentsTable(appointments: stats['recent_appointments'] ?? []),
               ],
             ),
-            const SizedBox(height: 48),
-            Text(
-              'Recent Appointments',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            const _RecentAppointmentsTable(),
-          ],
-        ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }
@@ -147,7 +161,8 @@ class _StatCard extends StatelessWidget {
 }
 
 class _RecentAppointmentsTable extends StatelessWidget {
-  const _RecentAppointmentsTable();
+  final List<dynamic> appointments;
+  const _RecentAppointmentsTable({required this.appointments});
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +190,20 @@ class _RecentAppointmentsTable extends StatelessWidget {
             DataColumn(label: Text('Status')),
             DataColumn(label: Text('Action')),
           ],
-          rows: [],
+          rows: appointments.map((appt) {
+            Color statusColor = Colors.blue;
+            if (appt['status'] == 'COMPLETED') statusColor = Colors.green;
+            if (appt['status'] == 'CANCELLED') statusColor = Colors.red;
+            
+            return _buildRow(
+              appt['patient_name'] ?? 'Unknown',
+              appt['doctor_name'] ?? 'Unknown',
+              appt['department_name'] ?? 'Unknown',
+              appt['time'] ?? '',
+              appt['status'] ?? 'SCHEDULED',
+              statusColor,
+            );
+          }).toList(),
         ),
       ),
     );
