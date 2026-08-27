@@ -414,6 +414,31 @@ class _DoctorScheduleScreenState extends ConsumerState<DoctorScheduleScreen> {
     }
   }
 
+  String _formatRowDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    try {
+      final parsed = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final apptDate = DateTime(parsed.year, parsed.month, parsed.day);
+
+      final difference = apptDate.difference(today).inDays;
+      final formattedDate = DateFormat('dd MMM yyyy').format(parsed);
+
+      if (difference == 0) {
+        return 'Today, $formattedDate';
+      } else if (difference == 1) {
+        return 'Tomorrow, $formattedDate';
+      } else if (difference == -1) {
+        return 'Yesterday, $formattedDate';
+      } else {
+        return formattedDate;
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
   Widget _buildAppointmentsList(List<Map<String, dynamic>> appointments, String doctorId) {
     var filtered = appointments;
     if (_selectedFilter != 'All') {
@@ -550,7 +575,7 @@ class _DoctorScheduleScreenState extends ConsumerState<DoctorScheduleScreen> {
                           const SizedBox(width: 16),
                           Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade600),
                           const SizedBox(width: 4),
-                          Text(date, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                          Text(_formatRowDate(date), style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
                         ],
                       ),
                     ],

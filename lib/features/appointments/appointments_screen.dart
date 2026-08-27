@@ -15,8 +15,12 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   String? _selectedDepartmentId;
   String? _selectedDepartmentName;
   String _searchQuery = '';
-  String _dateFilter = 'All';
-  String _statusFilter = 'All';
+  
+  // Date filter mode: 'All', 'Choose Date', 'Yesterday', 'Today', 'Tomorrow'
+  String _selectedDateFilterMode = 'All';
+  DateTime? _customSelectedDate;
+
+  String _statusFilter = 'All'; // 'All', 'BOOKED', 'WAITING', 'COMPLETED', 'CANCELLED'
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +52,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
             const SizedBox(height: 24),
             _buildActiveFilterBanner(),
             const SizedBox(height: 16),
-            _buildSearchBarAndFilters(),
+            _buildSearchBarAndFilters(context),
             const SizedBox(height: 16),
             _buildLogsTableContainer(appointmentsAsync, hospitalId),
           ],
@@ -59,12 +63,16 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
 
   String? _getDateFilterString() {
     final now = DateTime.now();
-    if (_dateFilter == 'Today') {
+    if (_selectedDateFilterMode == 'Choose Date' && _customSelectedDate != null) {
+      return DateFormat('yyyy-MM-dd').format(_customSelectedDate!);
+    } else if (_selectedDateFilterMode == 'Yesterday') {
+      return DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 1)));
+    } else if (_selectedDateFilterMode == 'Today') {
       return DateFormat('yyyy-MM-dd').format(now);
-    } else if (_dateFilter == 'Tomorrow') {
+    } else if (_selectedDateFilterMode == 'Tomorrow') {
       return DateFormat('yyyy-MM-dd').format(now.add(const Duration(days: 1)));
     }
-    return null;
+    return null; // 'All'
   }
 
   void _refreshAll(String hospitalId) {
@@ -119,7 +127,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'LIVE MONITORING',
+                        'LIVE MONITORING (IST)',
                         style: TextStyle(
                           color: Colors.green.shade800,
                           fontSize: 11,
@@ -133,7 +141,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Real-time department queue status, bookings, and appointment logs',
+              'Real-time department queue status, bookings, and appointment logs (Indian Standard Time)',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
           ],
@@ -159,7 +167,6 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   ) {
     return deptOverviewAsync.when(
       data: (departments) {
-        // Compute total bookings & ongoing queue across all departments
         int grandTotalBookings = 0;
         int grandTotalOngoing = 0;
         for (var d in departments) {
@@ -182,7 +189,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   ),
                 ),
                 Text(
-                  'Click on any department tile to filter its logs',
+                  'Click on any department tile to view its live queue and appointment logs',
                   style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                 ),
               ],
@@ -550,7 +557,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
             const Icon(Icons.info_outline, color: Color(0xFF1565C0), size: 20),
             const SizedBox(width: 10),
             const Text(
-              'Showing all appointment logs across all hospital departments.',
+              'Showing all appointment logs across all hospital departments in Indian Standard Time (IST).',
               style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ],
@@ -618,7 +625,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     );
   }
 
-  Widget _buildSearchBarAndFilters() {
+  Widget _buildSearchBarAndFilters(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -626,97 +633,211 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search by patient name, phone number, or type...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search by patient name, phone number, or type...',
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val.toLowerCase();
+                    });
+                  },
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val.toLowerCase();
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Date Filter Dropdown
-          DropdownButtonHideUnderline(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  DropdownButton<String>(
-                    value: _dateFilter,
-                    items: const [
-                      DropdownMenuItem(value: 'All', child: Text('All Dates')),
-                      DropdownMenuItem(value: 'Today', child: Text('Today')),
-                      DropdownMenuItem(value: 'Tomorrow', child: Text('Tomorrow')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _dateFilter = val;
-                        });
-                      }
-                    },
+              const SizedBox(width: 16),
+              // Status Filter Dropdown
+              DropdownButtonHideUnderline(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Status Filter Dropdown
-          DropdownButtonHideUnderline(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.filter_list, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  DropdownButton<String>(
-                    value: _statusFilter,
-                    items: const [
-                      DropdownMenuItem(value: 'All', child: Text('All Statuses')),
-                      DropdownMenuItem(value: 'BOOKED', child: Text('Booked')),
-                      DropdownMenuItem(value: 'WAITING', child: Text('Waiting')),
-                      DropdownMenuItem(value: 'COMPLETED', child: Text('Completed')),
-                      DropdownMenuItem(value: 'CANCELLED', child: Text('Cancelled')),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.filter_list, size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: _statusFilter,
+                        items: const [
+                          DropdownMenuItem(value: 'All', child: Text('All Statuses')),
+                          DropdownMenuItem(value: 'BOOKED', child: Text('Booked')),
+                          DropdownMenuItem(value: 'WAITING', child: Text('Waiting')),
+                          DropdownMenuItem(value: 'COMPLETED', child: Text('Completed')),
+                          DropdownMenuItem(value: 'CANCELLED', child: Text('Cancelled')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _statusFilter = val;
+                            });
+                          }
+                        },
+                      ),
                     ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _statusFilter = val;
-                        });
-                      }
-                    },
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Date Filter Bar in exact required sequence:
+          // 1. Choose Date (Calendar)
+          // 2. Yesterday
+          // 3. Today
+          // 4. Tomorrow
+          Row(
+            children: [
+              const Text(
+                'Filter Date:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+              ),
+              const SizedBox(width: 12),
+              // 1. Choose Date (from Calendar)
+              ActionChip(
+                avatar: const Icon(Icons.calendar_month, size: 16, color: Color(0xFF1565C0)),
+                label: Text(
+                  _selectedDateFilterMode == 'Choose Date' && _customSelectedDate != null
+                      ? DateFormat('dd MMM yyyy').format(_customSelectedDate!)
+                      : 'Choose Date',
+                  style: TextStyle(
+                    color: _selectedDateFilterMode == 'Choose Date' ? const Color(0xFF1565C0) : Colors.grey.shade800,
+                    fontWeight: _selectedDateFilterMode == 'Choose Date' ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+                backgroundColor: _selectedDateFilterMode == 'Choose Date'
+                    ? const Color(0xFF1565C0).withAlpha(25)
+                    : Colors.grey.shade100,
+                side: BorderSide(
+                  color: _selectedDateFilterMode == 'Choose Date'
+                      ? const Color(0xFF1565C0)
+                      : Colors.grey.shade300,
+                ),
+                onPressed: () => _openDatePicker(context),
+              ),
+              const SizedBox(width: 8),
+              // 2. Yesterday
+              ChoiceChip(
+                label: const Text('Yesterday'),
+                selected: _selectedDateFilterMode == 'Yesterday',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = val ? 'Yesterday' : 'All';
+                    _customSelectedDate = null;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              // 3. Today
+              ChoiceChip(
+                label: const Text('Today'),
+                selected: _selectedDateFilterMode == 'Today',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = val ? 'Today' : 'All';
+                    _customSelectedDate = null;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              // 4. Tomorrow
+              ChoiceChip(
+                label: const Text('Tomorrow'),
+                selected: _selectedDateFilterMode == 'Tomorrow',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = val ? 'Tomorrow' : 'All';
+                    _customSelectedDate = null;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              // 5. All Dates (Reset)
+              ChoiceChip(
+                label: const Text('All Dates'),
+                selected: _selectedDateFilterMode == 'All',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = 'All';
+                    _customSelectedDate = null;
+                  });
+                },
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openDatePicker(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _customSelectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1565C0),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDateFilterMode = 'Choose Date';
+        _customSelectedDate = picked;
+      });
+    }
+  }
+
+  String _formatRowDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    try {
+      final parsed = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final apptDate = DateTime(parsed.year, parsed.month, parsed.day);
+
+      final difference = apptDate.difference(today).inDays;
+      final formattedDate = DateFormat('dd MMM yyyy').format(parsed);
+
+      if (difference == 0) {
+        return 'Today, $formattedDate';
+      } else if (difference == 1) {
+        return 'Tomorrow, $formattedDate';
+      } else if (difference == -1) {
+        return 'Yesterday, $formattedDate';
+      } else {
+        return formattedDate;
+      }
+    } catch (e) {
+      return dateStr;
+    }
   }
 
   Widget _buildLogsTableContainer(
@@ -806,7 +927,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   dataRowMinHeight: 72,
                   horizontalMargin: 24,
                   columns: const [
-                    DataColumn(label: Text('Date & Time')),
+                    DataColumn(label: Text('Date & Time (IST)')),
                     DataColumn(label: Text('Patient Name')),
                     DataColumn(label: Text('Age & Gender')),
                     DataColumn(label: Text('Phone')),
@@ -816,7 +937,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   ],
                   rows: filtered.map((appt) {
                     final apptId = appt['id'] ?? '';
-                    final date = appt['appointment_date'] ?? 'N/A';
+                    final rawDate = appt['appointment_date'] ?? '';
+                    final formattedDate = _formatRowDate(rawDate);
                     final name = appt['patient_name'] ?? 'Unknown';
                     final ageGender = '${appt['patient_age'] ?? '-'} / ${appt['patient_gender'] ?? '-'}';
                     final phone = appt['patient_phone'] ?? 'N/A';
@@ -830,7 +952,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                             children: [
                               const Icon(Icons.event_note, size: 16, color: Color(0xFF1565C0)),
                               const SizedBox(width: 8),
-                              Text(date, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
