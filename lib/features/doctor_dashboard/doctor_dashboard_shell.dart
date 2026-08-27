@@ -114,9 +114,8 @@ class _DoctorSidebar extends ConsumerWidget {
                 _SidebarItem(
                   icon: Icons.calendar_today_outlined,
                   title: 'My Schedule',
-                  onTap: () {
-                    // Navigate to doctor's schedule
-                  },
+                  isSelected: GoRouterState.of(context).uri.path == '/doctor-dashboard/schedule',
+                  onTap: () => context.go('/doctor-dashboard/schedule'),
                 ),
               ],
             ),
