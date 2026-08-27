@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -21,6 +22,26 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   DateTime? _customSelectedDate;
 
   String _statusFilter = 'All'; // 'All', 'BOOKED', 'WAITING', 'COMPLETED', 'CANCELLED'
+  Timer? _autoRefreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-refresh every 4 seconds so doctor completions reflect automatically in real-time
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) {
+        final authState = ref.read(authProvider);
+        final hospitalId = authState.hospitalId ?? 'dummy_hospital_123';
+        _refreshAll(hospitalId);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +148,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'LIVE MONITORING (IST)',
+                        'LIVE AUTO-SYNC (IST)',
                         style: TextStyle(
                           color: Colors.green.shade800,
                           fontSize: 11,
@@ -699,6 +720,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           // 2. Yesterday
           // 3. Today
           // 4. Tomorrow
+          // 5. All Dates
           Row(
             children: [
               const Text(
@@ -818,25 +840,45 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   String _formatRowDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return 'N/A';
     try {
-      final parsed = DateTime.parse(dateStr);
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final apptDate = DateTime(parsed.year, parsed.month, parsed.day);
+      final trimmed = dateStr.trim();
+      if (trimmed.startsWith('20')) {
+        final parsed = DateTime.parse(trimmed);
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final apptDate = DateTime(parsed.year, parsed.month, parsed.day);
 
-      final difference = apptDate.difference(today).inDays;
-      final formattedDate = DateFormat('dd MMM yyyy').format(parsed);
+        final diffDays = apptDate.difference(today).inDays;
+        final formattedDate = DateFormat('dd MMM yyyy').format(parsed);
 
-      if (difference == 0) {
-        return 'Today, $formattedDate';
-      } else if (difference == 1) {
-        return 'Tomorrow, $formattedDate';
-      } else if (difference == -1) {
-        return 'Yesterday, $formattedDate';
-      } else {
-        return formattedDate;
+        if (diffDays == 0) {
+          return 'Today, $formattedDate';
+        } else if (diffDays == 1) {
+          return 'Tomorrow, $formattedDate';
+        } else if (diffDays == -1) {
+          return 'Yesterday, $formattedDate';
+        } else {
+          return formattedDate;
+        }
       }
+      return dateStr;
     } catch (e) {
       return dateStr;
+    }
+  }
+
+  String _formatBookingTime(dynamic rawCreatedAt) {
+    if (rawCreatedAt == null) return '';
+    try {
+      DateTime parsed;
+      if (rawCreatedAt is DateTime) {
+        parsed = rawCreatedAt;
+      } else {
+        parsed = DateTime.parse(rawCreatedAt.toString());
+      }
+      final local = parsed.toLocal();
+      return DateFormat('hh:mm a').format(local);
+    } catch (e) {
+      return '';
     }
   }
 
@@ -923,8 +965,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     fontWeight: FontWeight.bold,
                     color: Colors.grey.shade700,
                   ),
-                  dataRowMaxHeight: 72,
-                  dataRowMinHeight: 72,
+                  dataRowMaxHeight: 76,
+                  dataRowMinHeight: 76,
                   horizontalMargin: 24,
                   columns: const [
                     DataColumn(label: Text('Date & Time (IST)')),
@@ -939,6 +981,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     final apptId = appt['id'] ?? '';
                     final rawDate = appt['appointment_date'] ?? '';
                     final formattedDate = _formatRowDate(rawDate);
+                    final bookingTime = _formatBookingTime(appt['created_at']);
                     final name = appt['patient_name'] ?? 'Unknown';
                     final ageGender = '${appt['patient_age'] ?? '-'} / ${appt['patient_gender'] ?? '-'}';
                     final phone = appt['patient_phone'] ?? 'N/A';
@@ -948,11 +991,36 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     return DataRow(
                       cells: [
                         DataCell(
-                          Row(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.event_note, size: 16, color: Color(0xFF1565C0)),
-                              const SizedBox(width: 8),
-                              Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.event_note, size: 15, color: Color(0xFF1565C0)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    formattedDate,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (bookingTime.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Booked at $bookingTime',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

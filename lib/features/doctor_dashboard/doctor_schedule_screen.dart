@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -17,6 +18,25 @@ class _DoctorScheduleScreenState extends ConsumerState<DoctorScheduleScreen> {
   bool _isAvailable = true;
   final String _shiftTiming = '09:00 AM - 05:00 PM';
   String _selectedQuickDate = 'Today'; // 'Today', 'Tomorrow', 'All'
+  Timer? _autoRefreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) {
+        final authState = ref.read(authProvider);
+        final doctorId = authState.doctorId ?? '';
+        _refreshSchedule(doctorId);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -439,6 +459,22 @@ class _DoctorScheduleScreenState extends ConsumerState<DoctorScheduleScreen> {
     }
   }
 
+  String _formatBookingTime(dynamic rawCreatedAt) {
+    if (rawCreatedAt == null) return '';
+    try {
+      DateTime parsed;
+      if (rawCreatedAt is DateTime) {
+        parsed = rawCreatedAt;
+      } else {
+        parsed = DateTime.parse(rawCreatedAt.toString());
+      }
+      final local = parsed.toLocal();
+      return DateFormat('hh:mm a').format(local);
+    } catch (e) {
+      return '';
+    }
+  }
+
   Widget _buildAppointmentsList(List<Map<String, dynamic>> appointments, String doctorId) {
     var filtered = appointments;
     if (_selectedFilter != 'All') {
@@ -576,6 +612,13 @@ class _DoctorScheduleScreenState extends ConsumerState<DoctorScheduleScreen> {
                           Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade600),
                           const SizedBox(width: 4),
                           Text(_formatRowDate(date), style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                          if (_formatBookingTime(appt['created_at']).isNotEmpty) ...[
+                            const SizedBox(width: 12),
+                            Text(
+                              '• Booked at ${_formatBookingTime(appt['created_at'])}',
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontStyle: FontStyle.italic),
+                            ),
+                          ],
                         ],
                       ),
                     ],
