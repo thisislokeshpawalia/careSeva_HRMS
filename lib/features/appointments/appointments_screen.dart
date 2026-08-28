@@ -22,16 +22,16 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   DateTime? _customSelectedDate;
 
   String _statusFilter = 'All'; // 'All', 'BOOKED', 'WAITING', 'COMPLETED', 'CANCELLED'
-  Timer? _autoRefreshTimer;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
-    // Auto-refresh every 4 seconds so doctor completions reflect automatically in real-time
-    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    // Gentle 15-second background auto-refresh that doesn't wipe existing UI
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) {
         final authState = ref.read(authProvider);
-        final hospitalId = authState.hospitalId ?? 'dummy_hospital_123';
+        final hospitalId = authState.hospitalId ?? '6a8ea49ef17ddb14088aa5f7';
         _refreshAll(hospitalId);
       }
     });
@@ -39,14 +39,16 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
 
   @override
   void dispose() {
-    _autoRefreshTimer?.cancel();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final hospitalId = authState.hospitalId ?? 'dummy_hospital_123';
+    final hospitalId = (authState.hospitalId != null && authState.hospitalId != 'dummy_hospital_123')
+        ? authState.hospitalId!
+        : '6a8ea49ef17ddb14088aa5f7';
 
     final deptOverviewAsync = ref.watch(departmentOverviewProvider(hospitalId));
     final appointmentsAsync = ref.watch(
@@ -187,6 +189,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     String hospitalId,
   ) {
     return deptOverviewAsync.when(
+      skipLoadingOnRefresh: true,
       data: (departments) {
         int grandTotalBookings = 0;
         int grandTotalOngoing = 0;
@@ -894,6 +897,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: appointmentsAsync.when(
+        skipLoadingOnRefresh: true,
         data: (appointments) {
           var filtered = appointments;
           if (_searchQuery.isNotEmpty) {

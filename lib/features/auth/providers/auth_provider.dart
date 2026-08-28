@@ -55,7 +55,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isAuthenticated: true, 
           role: role,
           userId: data['id'],
-          hospitalId: data['hospital_id'] ?? 'dummy_hospital_123', // fallback if null for demo
+          hospitalId: data['hospital_id'] ?? '6a8ea49ef17ddb14088aa5f7',
           doctorId: role == UserRole.doctor ? data['id'] : null,
         );
         return true;
