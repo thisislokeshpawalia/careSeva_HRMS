@@ -883,9 +883,13 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
               final name = (a['patient_name'] ?? '').toString().toLowerCase();
               final phone = (a['patient_phone'] ?? '').toString().toLowerCase();
               final bookingFor = (a['booking_for'] ?? '').toString().toLowerCase();
+              final dept = (a['department_name'] ?? '').toString().toLowerCase();
+              final src = (a['booking_source'] ?? '').toString().toLowerCase();
               return name.contains(_searchQuery) ||
                   phone.contains(_searchQuery) ||
-                  bookingFor.contains(_searchQuery);
+                  bookingFor.contains(_searchQuery) ||
+                  dept.contains(_searchQuery) ||
+                  src.contains(_searchQuery);
             }).toList();
           }
 
@@ -953,9 +957,11 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   columns: const [
                     DataColumn(label: Text('Date & Time (IST)')),
                     DataColumn(label: Text('Patient Name')),
+                    DataColumn(label: Text('Department')),
                     DataColumn(label: Text('Age & Gender')),
                     DataColumn(label: Text('Phone')),
                     DataColumn(label: Text('Booking Type')),
+                    DataColumn(label: Text('Via')),
                     DataColumn(label: Text('Status')),
                     DataColumn(label: Text('Actions')),
                   ],
@@ -965,10 +971,15 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     final formattedDate = _formatRowDate(rawDate);
                     final bookingTime = _formatBookingTime(appt['created_at']);
                     final name = appt['patient_name'] ?? 'Unknown';
+                    final deptName = (appt['department_name'] != null && appt['department_name'].toString().isNotEmpty)
+                        ? appt['department_name']
+                        : (_selectedDepartmentName ?? 'General');
                     final ageGender = '${appt['patient_age'] ?? '-'} / ${appt['patient_gender'] ?? '-'}';
                     final phone = appt['patient_phone'] ?? 'N/A';
                     final bookingFor = appt['booking_for'] ?? 'myself';
                     final status = appt['status'] ?? 'BOOKED';
+                    final rawSource = (appt['booking_source'] ?? 'CARESEVA_APP').toString().toUpperCase();
+                    final isDirect = rawSource.contains('HMS') || rawSource.contains('DIRECT') || rawSource.contains('REGISTRY');
 
                     return DataRow(
                       cells: [
@@ -1026,6 +1037,31 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                             ],
                           ),
                         ),
+                        // Department Column
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0284C7).withAlpha(18),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(Icons.local_hospital, size: 14, color: Color(0xFF0284C7)),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                deptName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1E293B),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         DataCell(Text(ageGender)),
                         DataCell(Text(phone)),
                         DataCell(
@@ -1042,6 +1078,38 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
+                            ),
+                          ),
+                        ),
+                        // Via Column
+                        DataCell(
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: isDirect ? Colors.purple.shade50 : const Color(0xFF1565C0).withAlpha(18),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isDirect ? Colors.purple.shade200 : const Color(0xFF1565C0).withAlpha(40),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isDirect ? Icons.how_to_reg : Icons.phone_android,
+                                  size: 14,
+                                  color: isDirect ? Colors.purple.shade700 : const Color(0xFF1565C0),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isDirect ? 'Direct (HMS)' : 'CareSeva App',
+                                  style: TextStyle(
+                                    color: isDirect ? Colors.purple.shade800 : const Color(0xFF0D47A1),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
