@@ -18,6 +18,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   String _selectedViaFilter = 'All'; // 'All', 'DIRECT_WALKIN', 'CARESEVA_APP'
   String _selectedDeptFilter = 'All'; // 'All' or specific department name
   String _selectedDateFilterMode = 'All'; // 'All', 'Choose Date', 'Yesterday', 'Today', 'Tomorrow'
+  String _selectedPaymentFilter = 'All'; // 'All', 'DONE', 'PENDING'
   DateTime? _customSelectedDate;
 
   @override
@@ -136,11 +137,11 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Search Field + Platform Filter + Department Filter
+          // Row 1: Search Field + Platform Filter + Department Filter + Payment Status Filter
           Row(
             children: [
               Expanded(
-                flex: 5,
+                flex: 4,
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search by patient name, PID (e.g. CS-P-10001), phone, or department...',
@@ -158,7 +159,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               // Filter by Platform (Via)
               Expanded(
                 flex: 3,
@@ -189,7 +190,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               // Filter by Department
               Expanded(
                 flex: 3,
@@ -226,6 +227,37 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                   },
                   loading: () => const SizedBox(height: 48),
                   error: (e, s) => const SizedBox(height: 48),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Filter by Payment Status
+              Expanded(
+                flex: 3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedPaymentFilter,
+                      items: const [
+                        DropdownMenuItem(value: 'All', child: Text('All Payments')),
+                        DropdownMenuItem(value: 'DONE', child: Text('✓ Paid (100%)')),
+                        DropdownMenuItem(value: 'PENDING', child: Text('⚠ Pending (80% Due)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedPaymentFilter = val;
+                          });
+                        }
+                      },
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -324,6 +356,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     final hasFilters = _selectedViaFilter != 'All' ||
         _selectedDeptFilter != 'All' ||
         _selectedDateFilterMode != 'All' ||
+        _selectedPaymentFilter != 'All' ||
         _searchQuery.isNotEmpty;
 
     if (!hasFilters) {
@@ -339,7 +372,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             const Icon(Icons.info_outline, color: Color(0xFF1565C0), size: 18),
             const SizedBox(width: 10),
             const Text(
-              'Showing all registered patients from both CareSeva App and Direct HMS Desk, sorted chronologically by timestamp.',
+              'Showing all registered patients from CareSeva App and Direct HMS Desk, sorted chronologically by timestamp.',
               style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ],
@@ -372,6 +405,11 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                   'Dept: $_selectedDeptFilter',
                   () => setState(() => _selectedDeptFilter = 'All'),
                 ),
+              if (_selectedPaymentFilter != 'All')
+                _buildActiveChip(
+                  _selectedPaymentFilter == 'DONE' ? '✓ Paid' : '⚠ Pending',
+                  () => setState(() => _selectedPaymentFilter = 'All'),
+                ),
               if (_selectedDateFilterMode != 'All')
                 _buildActiveChip(
                   'Date: $_selectedDateFilterMode',
@@ -392,6 +430,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
               setState(() {
                 _selectedViaFilter = 'All';
                 _selectedDeptFilter = 'All';
+                _selectedPaymentFilter = 'All';
                 _selectedDateFilterMode = 'All';
                 _customSelectedDate = null;
                 _searchQuery = '';
@@ -528,7 +567,15 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             }).toList();
           }
 
-          // 4. Filter by Date
+          // 4. Filter by Payment Status
+          if (_selectedPaymentFilter != 'All') {
+            filtered = filtered.where((p) {
+              final pay = (p['payment_status'] ?? 'DONE').toString().toUpperCase();
+              return pay == _selectedPaymentFilter;
+            }).toList();
+          }
+
+          // 5. Filter by Date
           final dateTarget = _getDateFilterString();
           if (dateTarget != null) {
             filtered = filtered.where((p) {
@@ -539,7 +586,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             }).toList();
           }
 
-          // 5. Search query
+          // 6. Search query
           if (_searchQuery.isNotEmpty) {
             filtered = filtered.where((p) {
               final name = (p['name'] ?? '').toString().toLowerCase();
@@ -547,11 +594,13 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
               final phone = (p['phone'] ?? '').toString().toLowerCase();
               final dept = (p['department_name'] ?? '').toString().toLowerCase();
               final src = (p['registration_source'] ?? '').toString().toLowerCase();
+              final pay = (p['payment_status'] ?? '').toString().toLowerCase();
               return name.contains(_searchQuery) ||
                   pid.contains(_searchQuery) ||
                   phone.contains(_searchQuery) ||
                   dept.contains(_searchQuery) ||
-                  src.contains(_searchQuery);
+                  src.contains(_searchQuery) ||
+                  pay.contains(_searchQuery);
             }).toList();
           }
 
@@ -573,7 +622,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Try adjusting your platform, department, or date filters.',
+                      'Try adjusting your platform, department, payment, or date filters.',
                       style: TextStyle(color: Colors.grey.shade500),
                     ),
                   ],
@@ -627,6 +676,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     DataColumn(label: Text('Department')),
                     DataColumn(label: Text('Last Visit')),
                     DataColumn(label: Text('Via (Platform)')),
+                    DataColumn(label: Text('Payment Status')),
                     DataColumn(label: Text('Registered At (IST)')),
                   ],
                   rows: filtered.map((p) {
@@ -641,6 +691,12 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     final rawSource = (p['registration_source'] ?? 'DIRECT_WALKIN').toString().toUpperCase();
                     final isDirect = rawSource.contains('DIRECT') || rawSource.contains('WALKIN') || rawSource.contains('HMS');
                     final registeredAt = _formatTimestamp(p['created_at']);
+
+                    // Payment status breakdown
+                    final paymentStatus = (p['payment_status'] ?? 'DONE').toString().toUpperCase();
+                    final isPaidDone = paymentStatus == 'DONE';
+                    final totalFee = (p['total_fee'] ?? 500).toString();
+                    final remainingAmount = (p['remaining_amount'] ?? (isPaidDone ? 0 : 400)).toString();
 
                     return DataRow(
                       cells: [
@@ -774,6 +830,104 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                             ),
                           ),
                         ),
+                        // Payment Status Cell
+                        DataCell(
+                          isPaidDone
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green.shade300),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.check_circle, size: 14, color: Colors.green.shade700),
+                                      const SizedBox(width: 6),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Done (100%)',
+                                            style: TextStyle(
+                                              color: Colors.green.shade800,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          Text(
+                                            '₹$totalFee Paid',
+                                            style: TextStyle(
+                                              color: Colors.green.shade700,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : Tooltip(
+                                  message: 'Click to collect remaining 80% fee at counter',
+                                  child: InkWell(
+                                    onTap: () => _openPaymentSettlementDialog(p, hospitalId),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.amber.shade400),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.pending_actions, size: 14, color: Colors.amber.shade900),
+                                          const SizedBox(width: 6),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    'Pending (80%)',
+                                                    style: TextStyle(
+                                                      color: Colors.amber.shade900,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.amber.shade300,
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: const Text('Pay', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                                                  ),
+                                                ],
+                                              ),
+                                              Text(
+                                                'Due: ₹$remainingAmount',
+                                                style: TextStyle(
+                                                  color: Colors.red.shade700,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                        ),
                         // Registered At Timestamp Cell
                         DataCell(
                           Text(
@@ -802,6 +956,204 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           child: Center(child: Text('Error loading patient registry: $e')),
         ),
       ),
+    );
+  }
+
+  void _openPaymentSettlementDialog(Map<String, dynamic> patient, String hospitalId) {
+    final pid = patient['pid'] ?? 'N/A';
+    final name = patient['name'] ?? 'Patient';
+    final totalFee = (patient['total_fee'] ?? 500).toString();
+    final paidAmount = (patient['paid_amount'] ?? 100).toString();
+    final remainingAmount = (patient['remaining_amount'] ?? 400).toString();
+    final patientId = patient['id'] ?? patient['pid'];
+
+    bool isProcessing = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Container(
+                width: 480,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.payment, color: Color(0xFF1565C0)),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Counter Fee Settlement',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Patient Name:', style: TextStyle(color: Colors.grey)),
+                              Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Patient ID (PID):', style: TextStyle(color: Colors.grey)),
+                              Text(pid, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D47A1))),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Total Appointment Fee:', style: TextStyle(color: Colors.grey)),
+                              Text('₹$totalFee', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Advance Paid Online (20%):', style: TextStyle(color: Colors.grey)),
+                              Text('₹$paidAmount (Done)', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const Divider(height: 18),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Remaining Due to Collect (80%):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('₹$remainingAmount', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.red)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.point_of_sale, color: Color(0xFF1565C0), size: 18),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Counter Payment Gateway / Cash Settlement. Marks remaining fees as collected.',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF0D47A1), fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isProcessing ? null : () => Navigator.of(dialogCtx).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: isProcessing ? null : () async {
+                            setDialogState(() => isProcessing = true);
+                            final res = await completePatientPaymentApi(patientId);
+                            if (dialogCtx.mounted) {
+                              Navigator.of(dialogCtx).pop();
+                            }
+                            if (mounted) {
+                              ref.invalidate(hospitalPatientsProvider(hospitalId));
+                              if (res != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.green.shade700,
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: const EdgeInsets.all(16),
+                                    content: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle, color: Colors.white),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            'Payment Successful! Remaining ₹$remainingAmount collected. Status updated to Done.',
+                                            style: const TextStyle(fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    backgroundColor: Colors.red,
+                                    content: Text('Failed to update payment status. Please try again.'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: isProcessing
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Icon(Icons.done_all, size: 18),
+                          label: const Text('Confirm Payment & Mark as Done'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade700,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -925,6 +1277,11 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
       'last_visit': todayStr,
       'registration_source': 'DIRECT_WALKIN',
       'hospital_id': widget.hospitalId,
+      'payment_status': 'DONE',
+      'payment_option': 'full',
+      'total_fee': 500.0,
+      'paid_amount': 500.0,
+      'remaining_amount': 0.0,
     };
 
     final result = await registerPatientApi(payload);
@@ -937,12 +1294,24 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
         final token = result['token_number'];
         final dept = _selectedDeptName ?? 'Department';
         final queueMsg = token != null ? ' & Queued in $dept (Token #$token)' : '';
+
+        // Dropdown notification confirming counter payment and registration success
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green.shade700,
-            content: Text(
-              'Patient registered! PID: ${result['pid']}$queueMsg',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Payment Successful! ₹500 full fee collected at counter. Patient registered (PID: ${result['pid']})$queueMsg (Payment Status: Done)',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -1006,10 +1375,10 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'A unique Patient ID (PID) will be automatically generated and assigned upon registration.',
+                  'A unique Patient ID (PID) will be generated and full consultation fee (100%) will be recorded as collected at the counter.',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                 ),
-                const Divider(height: 28),
+                const Divider(height: 24),
 
                 // 1. Patient Name
                 const Text('Full Name *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -1211,7 +1580,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // 5. Last Visit (Prefilled Date of registration) & Via (Read-Only Badge)
+                // 5. Last Visit & Registration Source
                 Row(
                   children: [
                     // Last Visit
@@ -1243,7 +1612,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    // Via (Read-only, editing not allowed)
+                    // Via (Read-only)
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1275,6 +1644,54 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 16),
+
+                // 6. Fee & Counter Payment Gateway Card
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.payments_outlined, color: Colors.green.shade800, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Counter Payment (100% Full Fees): ₹500',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B5E20)),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Direct walk-in payment will be marked as Done upon submission.',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade700,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('Status: Done', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
 

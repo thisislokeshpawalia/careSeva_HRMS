@@ -38,3 +38,20 @@ Future<Map<String, dynamic>?> registerPatientApi(Map<String, dynamic> patientDat
     return null;
   }
 }
+
+Future<Map<String, dynamic>?> completePatientPaymentApi(String patientId) async {
+  try {
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.httpBaseUrl}/api/patients/$patientId/complete-payment'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      return null;
+    }
+  } catch (e) {
+    return null;
+  }
+}
