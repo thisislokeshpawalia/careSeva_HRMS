@@ -500,6 +500,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
         deptOverviewAsync: deptOverviewAsync,
         onSuccess: () {
           ref.invalidate(hospitalPatientsProvider(hospitalId));
+          ref.invalidate(departmentOverviewProvider(hospitalId));
         },
       ),
     );
@@ -606,11 +607,14 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
       if (result != null) {
         Navigator.of(context).pop();
         widget.onSuccess();
+        final token = result['token_number'];
+        final dept = _selectedDeptName ?? 'Department';
+        final queueMsg = token != null ? ' & Queued in $dept (Token #$token)' : '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green.shade700,
             content: Text(
-              'Patient registered successfully! Generated PID: ${result['pid']}',
+              'Patient registered! PID: ${result['pid']}$queueMsg',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
