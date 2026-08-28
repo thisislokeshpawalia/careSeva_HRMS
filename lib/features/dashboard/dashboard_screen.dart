@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'providers/dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -22,17 +25,28 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Dashboard Overview',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF0D47A1),
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Welcome back! Here is what is happening today.',
-                  style: TextStyle(color: Colors.grey.shade600),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Dashboard Overview',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0D47A1),
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Welcome back! Here is what is happening today in Indian Standard Time.',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                    const _LiveClockBadge(),
+                  ],
                 ),
                 const SizedBox(height: 32),
                 Wrap(
@@ -237,6 +251,118 @@ class _RecentAppointmentsTable extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _LiveClockBadge extends StatefulWidget {
+  const _LiveClockBadge();
+
+  @override
+  State<_LiveClockBadge> createState() => _LiveClockBadgeState();
+}
+
+class _LiveClockBadgeState extends State<_LiveClockBadge> {
+  late Timer _timer;
+  late DateTime _currentTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTime = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _currentTime = DateTime.now();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('EEE, dd MMM yyyy').format(_currentTime);
+    final timeStr = DateFormat('hh:mm:ss a').format(_currentTime);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF1565C0).withAlpha(40)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1565C0).withAlpha(15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withAlpha(20),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.access_time_filled, size: 16, color: Color(0xFF1565C0)),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.green.shade300),
+                    ),
+                    child: Text(
+                      'IST (LIVE)',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                timeStr,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D47A1),
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

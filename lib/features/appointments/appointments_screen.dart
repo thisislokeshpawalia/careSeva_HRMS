@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -31,7 +32,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) {
         final authState = ref.read(authProvider);
-        final hospitalId = authState.hospitalId ?? '6a8ea49ef17ddb14088aa5f7';
+        final hospitalId = (authState.hospitalId != null && authState.hospitalId != 'dummy_hospital_123')
+            ? authState.hospitalId!
+            : '6a8ea49ef17ddb14088aa5f7';
         _refreshAll(hospitalId);
       }
     });
@@ -119,48 +122,13 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Text(
-                  'Appointments & Live Queue Monitor',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D47A1),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.green.shade300),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'LIVE AUTO-SYNC (IST)',
-                        style: TextStyle(
-                          color: Colors.green.shade800,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const Text(
+              'Appointments & Live Queue Monitor',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D47A1),
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -169,16 +137,22 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
             ),
           ],
         ),
-        ElevatedButton.icon(
-          onPressed: () => _refreshAll(hospitalId),
-          icon: const Icon(Icons.refresh, size: 18),
-          label: const Text('Refresh Live Stats'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1565C0),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
+        Row(
+          children: [
+            const _LiveClockBadge(),
+            const SizedBox(width: 16),
+            ElevatedButton.icon(
+              onPressed: () => _refreshAll(hospitalId),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Refresh Live Stats'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1565C0),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -874,12 +848,16 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     try {
       DateTime parsed;
       if (rawCreatedAt is DateTime) {
-        parsed = rawCreatedAt;
+        parsed = rawCreatedAt.toLocal();
       } else {
-        parsed = DateTime.parse(rawCreatedAt.toString());
+        String str = rawCreatedAt.toString().trim();
+        if (!str.endsWith('Z') && !str.contains('+')) {
+          parsed = DateTime.parse('${str}Z').toLocal();
+        } else {
+          parsed = DateTime.parse(str).toLocal();
+        }
       }
-      final local = parsed.toLocal();
-      return DateFormat('hh:mm a').format(local);
+      return DateFormat('hh:mm a').format(parsed);
     } catch (e) {
       return '';
     }
@@ -1143,5 +1121,117 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
       default:
         return Colors.grey.shade700;
     }
+  }
+}
+
+class _LiveClockBadge extends StatefulWidget {
+  const _LiveClockBadge();
+
+  @override
+  State<_LiveClockBadge> createState() => _LiveClockBadgeState();
+}
+
+class _LiveClockBadgeState extends State<_LiveClockBadge> {
+  late Timer _timer;
+  late DateTime _currentTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTime = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _currentTime = DateTime.now();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('EEE, dd MMM yyyy').format(_currentTime);
+    final timeStr = DateFormat('hh:mm:ss a').format(_currentTime);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF1565C0).withAlpha(40)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1565C0).withAlpha(15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withAlpha(20),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.access_time_filled, size: 16, color: Color(0xFF1565C0)),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.green.shade300),
+                    ),
+                    child: Text(
+                      'IST (LIVE)',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                timeStr,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D47A1),
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
