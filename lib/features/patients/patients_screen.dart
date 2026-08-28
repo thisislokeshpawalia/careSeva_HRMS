@@ -20,6 +20,29 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   String _selectedDateFilterMode = 'All'; // 'All', 'Choose Date', 'Yesterday', 'Today', 'Tomorrow'
   String _selectedPaymentFilter = 'All'; // 'All', 'DONE', 'PENDING'
   DateTime? _customSelectedDate;
+  Timer? _autoSyncTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Real-time background auto-sync every 4 seconds
+    // Ensures new patient bookings from mobile app appear immediately without manual page refresh
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) {
+        final authState = ref.read(authProvider);
+        final hospitalId = (authState.hospitalId != null && authState.hospitalId != 'dummy_hospital_123')
+            ? authState.hospitalId!
+            : '6a8ea49ef17ddb14088aa5f7';
+        ref.invalidate(hospitalPatientsProvider(hospitalId));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoSyncTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
