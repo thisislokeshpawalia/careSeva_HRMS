@@ -876,7 +876,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                     );
                   },
                   loading: () => const LinearProgressIndicator(),
-                  error: (_, __) => const Text('Failed to load departments'),
+                  error: (e, s) => const Text('Failed to load departments'),
                 ),
                 const SizedBox(height: 16),
 
