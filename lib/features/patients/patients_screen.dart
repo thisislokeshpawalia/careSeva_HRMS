@@ -16,6 +16,9 @@ class PatientsScreen extends ConsumerStatefulWidget {
 class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   String _searchQuery = '';
   String _selectedViaFilter = 'All'; // 'All', 'DIRECT_WALKIN', 'CARESEVA_APP'
+  String _selectedDeptFilter = 'All'; // 'All' or specific department name
+  String _selectedDateFilterMode = 'All'; // 'All', 'Choose Date', 'Yesterday', 'Today', 'Tomorrow'
+  DateTime? _customSelectedDate;
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +38,11 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildTopHeader(hospitalId, deptOverviewAsync),
-            const SizedBox(height: 24),
-            _buildSearchBarAndFilters(),
             const SizedBox(height: 20),
+            _buildSearchBarAndFilters(deptOverviewAsync),
+            const SizedBox(height: 16),
+            _buildActiveFilterBanner(),
+            const SizedBox(height: 16),
             _buildRegistryTable(patientsAsync, hospitalId),
           ],
         ),
@@ -76,10 +81,10 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.badge_outlined, size: 14, color: Color(0xFF1565C0)),
+                      const Icon(Icons.hub_outlined, size: 14, color: Color(0xFF1565C0)),
                       const SizedBox(width: 6),
                       Text(
-                        'AUTOMATED UNIQUE PID SYSTEM',
+                        'CROSS-PLATFORM (APP + HMS DESK)',
                         style: TextStyle(
                           color: Colors.blue.shade800,
                           fontSize: 11,
@@ -93,7 +98,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Comprehensive patient database with unique Patient IDs (PID) sequenced chronologically for queue management',
+              'Unified patient directory from CareSeva Mobile App and Hospital Walk-in Registrations sequenced by timestamp',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
           ],
@@ -120,7 +125,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     );
   }
 
-  Widget _buildSearchBarAndFilters() {
+  Widget _buildSearchBarAndFilters(AsyncValue<List<Map<String, dynamic>>> deptOverviewAsync) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -128,56 +133,361 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search patients by Name, PID (e.g. CS-P-10001), Phone, or Department...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val.toLowerCase();
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Filter by Via / Source
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedViaFilter,
-                items: const [
-                  DropdownMenuItem(value: 'All', child: Text('All Sources (Via)')),
-                  DropdownMenuItem(value: 'DIRECT_WALKIN', child: Text('Direct Walk-in')),
-                  DropdownMenuItem(value: 'CARESEVA_APP', child: Text('CareSeva App')),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
+          // Row 1: Search Field + Platform Filter + Department Filter
+          Row(
+            children: [
+              Expanded(
+                flex: 5,
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search by patient name, PID (e.g. CS-P-10001), phone, or department...',
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  onChanged: (val) {
                     setState(() {
-                      _selectedViaFilter = val;
+                      _searchQuery = val.toLowerCase();
                     });
-                  }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Filter by Platform (Via)
+              Expanded(
+                flex: 3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedViaFilter,
+                      items: const [
+                        DropdownMenuItem(value: 'All', child: Text('All Platforms (Both)')),
+                        DropdownMenuItem(value: 'CARESEVA_APP', child: Text('📱 CareSeva App')),
+                        DropdownMenuItem(value: 'DIRECT_WALKIN', child: Text('🏥 Direct Walk-in')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedViaFilter = val;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Filter by Department
+              Expanded(
+                flex: 3,
+                child: deptOverviewAsync.when(
+                  data: (departments) {
+                    final deptNames = ['All', ...departments.map((d) => d['name'] as String? ?? '').where((n) => n.isNotEmpty).toSet()];
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: deptNames.contains(_selectedDeptFilter) ? _selectedDeptFilter : 'All',
+                          items: deptNames.map((name) {
+                            return DropdownMenuItem<String>(
+                              value: name,
+                              child: Text(name == 'All' ? 'All Departments' : name),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedDeptFilter = val;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox(height: 48),
+                  error: (e, s) => const SizedBox(height: 48),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Row 2: Date Filter Bar
+          Row(
+            children: [
+              const Text(
+                'Filter Date:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+              ),
+              const SizedBox(width: 12),
+              // 1. Choose Date (Calendar)
+              ActionChip(
+                avatar: const Icon(Icons.calendar_month, size: 16, color: Color(0xFF1565C0)),
+                label: Text(
+                  _selectedDateFilterMode == 'Choose Date' && _customSelectedDate != null
+                      ? DateFormat('yyyy/MM/dd').format(_customSelectedDate!)
+                      : 'Choose Date',
+                  style: TextStyle(
+                    color: _selectedDateFilterMode == 'Choose Date' ? const Color(0xFF1565C0) : Colors.grey.shade800,
+                    fontWeight: _selectedDateFilterMode == 'Choose Date' ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+                backgroundColor: _selectedDateFilterMode == 'Choose Date'
+                    ? const Color(0xFF1565C0).withAlpha(25)
+                    : Colors.grey.shade100,
+                side: BorderSide(
+                  color: _selectedDateFilterMode == 'Choose Date'
+                      ? const Color(0xFF1565C0)
+                      : Colors.grey.shade300,
+                ),
+                onPressed: () => _openDatePicker(context),
+              ),
+              const SizedBox(width: 8),
+              // 2. Yesterday
+              ChoiceChip(
+                label: const Text('Yesterday'),
+                selected: _selectedDateFilterMode == 'Yesterday',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = val ? 'Yesterday' : 'All';
+                    _customSelectedDate = null;
+                  });
                 },
+              ),
+              const SizedBox(width: 8),
+              // 3. Today
+              ChoiceChip(
+                label: const Text('Today'),
+                selected: _selectedDateFilterMode == 'Today',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = val ? 'Today' : 'All';
+                    _customSelectedDate = null;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              // 4. Tomorrow
+              ChoiceChip(
+                label: const Text('Tomorrow'),
+                selected: _selectedDateFilterMode == 'Tomorrow',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = val ? 'Tomorrow' : 'All';
+                    _customSelectedDate = null;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              // 5. All Dates (Reset)
+              ChoiceChip(
+                label: const Text('All Dates'),
+                selected: _selectedDateFilterMode == 'All',
+                selectedColor: const Color(0xFF1565C0).withAlpha(25),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedDateFilterMode = 'All';
+                    _customSelectedDate = null;
+                  });
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveFilterBanner() {
+    final hasFilters = _selectedViaFilter != 'All' ||
+        _selectedDeptFilter != 'All' ||
+        _selectedDateFilterMode != 'All' ||
+        _searchQuery.isNotEmpty;
+
+    if (!hasFilters) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Color(0xFF1565C0), size: 18),
+            const SizedBox(width: 10),
+            const Text(
+              'Showing all registered patients from both CareSeva App and Direct HMS Desk, sorted chronologically by timestamp.',
+              style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D47A1).withAlpha(15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF0D47A1).withAlpha(40)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.filter_alt, color: Color(0xFF0D47A1), size: 18),
+              const SizedBox(width: 8),
+              const Text('Active Filters: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              if (_selectedViaFilter != 'All')
+                _buildActiveChip(
+                  _selectedViaFilter == 'CARESEVA_APP' ? '📱 CareSeva App' : '🏥 Direct Walk-in',
+                  () => setState(() => _selectedViaFilter = 'All'),
+                ),
+              if (_selectedDeptFilter != 'All')
+                _buildActiveChip(
+                  'Dept: $_selectedDeptFilter',
+                  () => setState(() => _selectedDeptFilter = 'All'),
+                ),
+              if (_selectedDateFilterMode != 'All')
+                _buildActiveChip(
+                  'Date: $_selectedDateFilterMode',
+                  () => setState(() {
+                    _selectedDateFilterMode = 'All';
+                    _customSelectedDate = null;
+                  }),
+                ),
+              if (_searchQuery.isNotEmpty)
+                _buildActiveChip(
+                  'Search: "$_searchQuery"',
+                  () => setState(() => _searchQuery = ''),
+                ),
+            ],
+          ),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _selectedViaFilter = 'All';
+                _selectedDeptFilter = 'All';
+                _selectedDateFilterMode = 'All';
+                _customSelectedDate = null;
+                _searchQuery = '';
+              });
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.close, color: Colors.red, size: 14),
+                  const SizedBox(width: 4),
+                  Text('Clear All Filters', style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildActiveChip(String label, VoidCallback onRemove) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: Chip(
+        label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        deleteIcon: const Icon(Icons.close, size: 14),
+        onDeleted: onRemove,
+        backgroundColor: Colors.white,
+        side: BorderSide(color: Colors.grey.shade300),
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+      ),
+    );
+  }
+
+  Future<void> _openDatePicker(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _customSelectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1565C0),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDateFilterMode = 'Choose Date';
+        _customSelectedDate = picked;
+      });
+    }
+  }
+
+  String? _getDateFilterString() {
+    final now = DateTime.now();
+    if (_selectedDateFilterMode == 'Choose Date' && _customSelectedDate != null) {
+      return DateFormat('yyyy-MM-dd').format(_customSelectedDate!);
+    } else if (_selectedDateFilterMode == 'Yesterday') {
+      return DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 1)));
+    } else if (_selectedDateFilterMode == 'Today') {
+      return DateFormat('yyyy-MM-dd').format(now);
+    } else if (_selectedDateFilterMode == 'Tomorrow') {
+      return DateFormat('yyyy-MM-dd').format(now.add(const Duration(days: 1)));
+    }
+    return null; // 'All'
+  }
+
+  DateTime _parseTimestamp(dynamic raw) {
+    if (raw == null) return DateTime.fromMillisecondsSinceEpoch(0);
+    if (raw is DateTime) return raw.toLocal();
+    try {
+      String str = raw.toString().trim();
+      if (!str.endsWith('Z') && !str.contains('+')) {
+        return DateTime.parse('${str}Z').toLocal();
+      }
+      return DateTime.parse(str).toLocal();
+    } catch (e) {
+      return DateTime.fromMillisecondsSinceEpoch(0);
+    }
   }
 
   Widget _buildRegistryTable(
@@ -194,9 +504,15 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       child: patientsAsync.when(
         skipLoadingOnRefresh: true,
         data: (patients) {
-          var filtered = patients;
+          // 1. Sort strictly by timestamp descending (newest registrations at top)
+          var filtered = List<Map<String, dynamic>>.from(patients);
+          filtered.sort((a, b) {
+            final timeA = _parseTimestamp(a['created_at']);
+            final timeB = _parseTimestamp(b['created_at']);
+            return timeB.compareTo(timeA);
+          });
 
-          // Source filter
+          // 2. Filter by Platform (Via)
           if (_selectedViaFilter != 'All') {
             filtered = filtered.where((p) {
               final src = (p['registration_source'] ?? '').toString().toUpperCase();
@@ -204,17 +520,38 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             }).toList();
           }
 
-          // Search query
+          // 3. Filter by Department
+          if (_selectedDeptFilter != 'All') {
+            filtered = filtered.where((p) {
+              final dept = (p['department_name'] ?? '').toString().toLowerCase();
+              return dept == _selectedDeptFilter.toLowerCase();
+            }).toList();
+          }
+
+          // 4. Filter by Date
+          final dateTarget = _getDateFilterString();
+          if (dateTarget != null) {
+            filtered = filtered.where((p) {
+              final createdDt = _parseTimestamp(p['created_at']);
+              final createdStr = DateFormat('yyyy-MM-dd').format(createdDt);
+              final lastVisit = (p['last_visit'] ?? '').toString().replaceAll('/', '-');
+              return createdStr == dateTarget || lastVisit == dateTarget;
+            }).toList();
+          }
+
+          // 5. Search query
           if (_searchQuery.isNotEmpty) {
             filtered = filtered.where((p) {
               final name = (p['name'] ?? '').toString().toLowerCase();
               final pid = (p['pid'] ?? '').toString().toLowerCase();
               final phone = (p['phone'] ?? '').toString().toLowerCase();
               final dept = (p['department_name'] ?? '').toString().toLowerCase();
+              final src = (p['registration_source'] ?? '').toString().toLowerCase();
               return name.contains(_searchQuery) ||
                   pid.contains(_searchQuery) ||
                   phone.contains(_searchQuery) ||
-                  dept.contains(_searchQuery);
+                  dept.contains(_searchQuery) ||
+                  src.contains(_searchQuery);
             }).toList();
           }
 
@@ -227,7 +564,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     Icon(Icons.people_outline, size: 56, color: Colors.grey.shade300),
                     const SizedBox(height: 16),
                     Text(
-                      'No registered patients found',
+                      'No matching patients found',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -236,7 +573,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Click "Register Patient" above to register walk-in patients with auto-generated unique PIDs.',
+                      'Try adjusting your platform, department, or date filters.',
                       style: TextStyle(color: Colors.grey.shade500),
                     ),
                   ],
@@ -254,7 +591,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Registered Patients (${filtered.length} entries • Sequence by Timestamp)',
+                      'Registered Patients (${filtered.length} entries • Arranged Chronologically by Timestamp)',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -289,7 +626,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     DataColumn(label: Text('Phone')),
                     DataColumn(label: Text('Department')),
                     DataColumn(label: Text('Last Visit')),
-                    DataColumn(label: Text('Via (Source)')),
+                    DataColumn(label: Text('Via (Platform)')),
                     DataColumn(label: Text('Registered At (IST)')),
                   ],
                   rows: filtered.map((p) {
@@ -405,7 +742,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                         ),
                         // Last Visit Cell
                         DataCell(Text(lastVisit.replaceAll('-', '/'))),
-                        // Via (Registration Source) Cell - Automatically fetched, Read-only
+                        // Via (Platform Source) Cell
                         DataCell(
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -460,7 +797,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           padding: EdgeInsets.all(48.0),
           child: Center(child: CircularProgressIndicator()),
         ),
-        error: (e, _) => Padding(
+        error: (e, s) => Padding(
           padding: const EdgeInsets.all(32.0),
           child: Center(child: Text('Error loading patient registry: $e')),
         ),
@@ -471,17 +808,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   String _formatTimestamp(dynamic rawCreatedAt) {
     if (rawCreatedAt == null) return '-';
     try {
-      DateTime parsed;
-      if (rawCreatedAt is DateTime) {
-        parsed = rawCreatedAt.toLocal();
-      } else {
-        String str = rawCreatedAt.toString().trim();
-        if (!str.endsWith('Z') && !str.contains('+')) {
-          parsed = DateTime.parse('${str}Z').toLocal();
-        } else {
-          parsed = DateTime.parse(str).toLocal();
-        }
-      }
+      DateTime parsed = _parseTimestamp(rawCreatedAt);
       return DateFormat('dd MMM yyyy, hh:mm a').format(parsed);
     } catch (e) {
       return rawCreatedAt.toString();
