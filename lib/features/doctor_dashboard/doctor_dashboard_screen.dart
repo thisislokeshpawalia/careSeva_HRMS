@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -29,6 +30,10 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   int _totalTokens = 0;
   WebSocketChannel? _channel;
   bool _isConnected = false;
+  bool _isReconnecting = false;
+  Timer? _heartbeatTimer;
+  Timer? _reconnectTimer;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
@@ -37,6 +42,45 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
       _initWebSocket();
       _fetchQueueStatus();
     });
+
+    // Fail-safe background polling every 8 seconds:
+    // Guarantees all devices stay 100% in sync even if WebSocket is reconnecting
+    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) {
+        _fetchQueueStatus();
+      }
+    });
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    // Send ping every 12 seconds to prevent Railway/cloud proxies from killing the connection
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      if (_channel != null && _isConnected) {
+        try {
+          _channel!.sink.add(jsonEncode({'action': 'ping'}));
+        } catch (_) {}
+      }
+    });
+  }
+
+  void _scheduleReconnect() {
+    _heartbeatTimer?.cancel();
+    if (_reconnectTimer?.isActive ?? false) return;
+    
+    if (mounted) {
+      setState(() {
+        _isConnected = false;
+        _isReconnecting = true;
+      });
+    }
+
+    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        _initWebSocket();
+        _fetchQueueStatus();
+      }
+    });
   }
 
   void _initWebSocket() {
@@ -44,29 +88,51 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     final doctorId = authState.doctorId;
     
     if (doctorId != null) {
-      _channel = WebSocketChannel.connect(
-        Uri.parse('${ApiConfig.wsBaseUrl}/api/queue/ws/$doctorId'),
-      );
-      
-      setState(() => _isConnected = true);
+      try {
+        _channel?.sink.close();
+      } catch (_) {}
 
-      _channel!.stream.listen((message) {
-        final data = jsonDecode(message);
-        setState(() {
-          if (data['event'] == 'new_patient') {
-            _totalTokens = data['total_tokens'];
-            // Re-fetch queue to get the new patient name
-            _fetchQueueStatus();
-          } else if (data['event'] == 'queue_advanced') {
-            _currentToken = data['current_token'];
-            _fetchQueueStatus();
-          }
+      try {
+        _channel = WebSocketChannel.connect(
+          Uri.parse('${ApiConfig.wsBaseUrl}/api/queue/ws/$doctorId'),
+        );
+        
+        if (mounted) {
+          setState(() {
+            _isConnected = true;
+            _isReconnecting = false;
+          });
+        }
+
+        _startHeartbeat();
+
+        _channel!.stream.listen((message) {
+          try {
+            final data = jsonDecode(message);
+            if (data['event'] == 'pong') {
+              // Heartbeat acknowledged
+              return;
+            }
+            if (mounted) {
+              setState(() {
+                if (data['event'] == 'new_patient') {
+                  _totalTokens = data['total_tokens'] ?? _totalTokens;
+                  _fetchQueueStatus();
+                } else if (data['event'] == 'queue_advanced') {
+                  _currentToken = data['current_token'] ?? _currentToken;
+                  _fetchQueueStatus();
+                }
+              });
+            }
+          } catch (_) {}
+        }, onError: (error) {
+          _scheduleReconnect();
+        }, onDone: () {
+          _scheduleReconnect();
         });
-      }, onError: (error) {
-        setState(() => _isConnected = false);
-      }, onDone: () {
-        setState(() => _isConnected = false);
-      });
+      } catch (e) {
+        _scheduleReconnect();
+      }
     }
   }
 
@@ -79,21 +145,22 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
         final statusRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/status'));
         final entriesRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/entries'));
         
-        if (statusRes.statusCode == 200 && entriesRes.statusCode == 200) {
+        if (statusRes.statusCode == 200 && entriesRes.statusCode == 200 && mounted) {
           final statusData = jsonDecode(statusRes.body);
           final List<dynamic> entriesData = jsonDecode(entriesRes.body);
           
           setState(() {
-            _currentToken = statusData['current_token'];
-            _totalTokens = statusData['total_tokens'];
+            _currentToken = statusData['current_token'] ?? 0;
+            _totalTokens = statusData['total_tokens'] ?? 0;
             
             _queue.clear();
+            _completedQueue.clear();
             _currentPatient = null;
             
             for (var entry in entriesData) {
               int token = entry['token_number'];
               String name = entry['patient_name'] ?? 'Unknown';
-              String state = entry['status'];
+              String state = entry['status'] ?? 'WAITING';
               
               if (token == _currentToken && state == 'CALLED') {
                 _currentPatient = Patient('$name (Token #$token)', 'Now', 'Consultation');
@@ -113,6 +180,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
 
   @override
   void dispose() {
+    _heartbeatTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _pollingTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
@@ -169,28 +239,55 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                     color: Color(0xFF0D47A1),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _isConnected ? Colors.green.withAlpha(50) : Colors.red.withAlpha(50),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isConnected ? Icons.wifi : Icons.wifi_off,
-                        color: _isConnected ? Colors.green : Colors.red,
-                        size: 16,
+                InkWell(
+                  onTap: () {
+                    _initWebSocket();
+                    _fetchQueueStatus();
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: _isConnected
+                          ? Colors.green.shade50
+                          : (_isReconnecting ? Colors.amber.shade50 : Colors.red.shade50),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _isConnected
+                            ? Colors.green.shade300
+                            : (_isReconnecting ? Colors.amber.shade300 : Colors.red.shade300),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _isConnected ? 'Live' : 'Disconnected',
-                        style: TextStyle(
-                          color: _isConnected ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_isReconnecting)
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                          )
+                        else
+                          Icon(
+                            _isConnected ? Icons.wifi : Icons.wifi_off,
+                            color: _isConnected ? Colors.green.shade700 : Colors.red.shade700,
+                            size: 16,
+                          ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isConnected
+                              ? 'Live'
+                              : (_isReconnecting ? 'Reconnecting...' : 'Disconnected (Tap to sync)'),
+                          style: TextStyle(
+                            color: _isConnected
+                                ? Colors.green.shade800
+                                : (_isReconnecting ? Colors.amber.shade900 : Colors.red.shade800),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
