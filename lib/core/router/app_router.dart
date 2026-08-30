@@ -8,6 +8,7 @@ import '../../features/hospital/hospital_settings_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/doctors/doctors_screen.dart';
 import '../../features/patients/patients_screen.dart';
+import '../../features/admissions/admissions_screen.dart';
 import '../../features/appointments/appointments_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/doctor_dashboard/doctor_dashboard_shell.dart';
@@ -39,6 +40,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/patients',
             builder: (context, state) => const PatientsScreen(),
+          ),
+          GoRoute(
+            path: '/admissions',
+            builder: (context, state) => const AdmissionsScreen(),
           ),
           GoRoute(
             path: '/doctors',

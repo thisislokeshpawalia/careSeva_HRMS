@@ -67,6 +67,8 @@ class _DashboardSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final location = GoRouterState.of(context).uri.path;
+
     return Container(
       width: 280,
       color: Colors.white,
@@ -102,27 +104,37 @@ class _DashboardSidebar extends ConsumerWidget {
                 _SidebarItem(
                   icon: Icons.dashboard_outlined,
                   title: 'Dashboard',
-                  isSelected: true,
+                  isSelected: location == '/dashboard',
                   onTap: () => context.go('/dashboard'),
                 ),
                 _SidebarItem(
                   icon: Icons.people_outline,
                   title: 'Patients',
+                  isSelected: location == '/patients',
                   onTap: () => context.go('/patients'),
+                ),
+                _SidebarItem(
+                  icon: Icons.hotel_outlined,
+                  title: 'Admissions',
+                  isSelected: location == '/admissions',
+                  onTap: () => context.go('/admissions'),
                 ),
                 _SidebarItem(
                   icon: Icons.medical_services_outlined,
                   title: 'Doctors',
+                  isSelected: location == '/doctors',
                   onTap: () => context.go('/doctors'),
                 ),
                 _SidebarItem(
                   icon: Icons.calendar_today_outlined,
                   title: 'Appointments',
+                  isSelected: location == '/appointments',
                   onTap: () => context.go('/appointments'),
                 ),
                 _SidebarItem(
                   icon: Icons.settings_outlined,
                   title: 'Settings',
+                  isSelected: location == '/settings',
                   onTap: () => context.go('/settings'),
                 ),
               ],
