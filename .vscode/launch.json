@@ -2,6 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "CareQueue HMS (Windows Desktop)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "windows"
+    },
+    {
       "name": "CareQueue HMS (Chrome Web)",
       "request": "launch",
       "type": "dart",
