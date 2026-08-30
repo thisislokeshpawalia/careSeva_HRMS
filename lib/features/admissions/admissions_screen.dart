@@ -124,13 +124,16 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
   }
 
   Widget _buildTopHeader(String hospitalId) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isCompact = constraints.maxWidth < 1050;
+
+        final titleSection = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -141,12 +144,14 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
                   child: const Icon(Icons.hotel_outlined, color: Color(0xFF1565C0), size: 24),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Patient Admissions & Inpatient Management',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                const Flexible(
+                  child: Text(
+                    'Patient Admissions & Inpatient Management',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
                 ),
               ],
@@ -154,14 +159,18 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
             const SizedBox(height: 6),
             Text(
               'Real-time IPD admission registers, ward allocations, and inpatient tracking (Indian Standard Time)',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
           ],
-        ),
-        Row(
+        );
+
+        final actionsSection = Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: isCompact ? WrapAlignment.start : WrapAlignment.end,
           children: [
             const _AdmissionLiveClockBadge(),
-            const SizedBox(width: 14),
             OutlinedButton.icon(
               onPressed: () => _refreshAll(hospitalId),
               icon: const Icon(Icons.refresh, size: 18),
@@ -174,7 +183,6 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
-            const SizedBox(width: 14),
             ElevatedButton.icon(
               onPressed: () => _openAdmitPatientDialog(context, hospitalId),
               icon: const Icon(Icons.add_circle_outline, size: 20),
@@ -186,13 +194,33 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
                 backgroundColor: const Color(0xFF1565C0),
                 foregroundColor: Colors.white,
                 elevation: 2,
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ],
-        ),
-      ],
+        );
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleSection,
+              const SizedBox(height: 16),
+              actionsSection,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: titleSection),
+            const SizedBox(width: 16),
+            actionsSection,
+          ],
+        );
+      },
     );
   }
 
@@ -593,63 +621,62 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.filter_list, color: Color(0xFF1D4ED8), size: 20),
-              const SizedBox(width: 10),
-              Text(
-                'Active Filters: ',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900, fontSize: 13),
-              ),
-              if (_selectedDepartmentName != null) ...[
-                Chip(
-                  label: Text('Dept: $_selectedDepartmentName', style: const TextStyle(fontSize: 12)),
-                  backgroundColor: Colors.white,
-                  visualDensity: VisualDensity.compact,
-                  onDeleted: () {
-                    setState(() {
-                      _selectedDepartmentId = null;
-                      _selectedDepartmentName = null;
-                    });
-                  },
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Icon(Icons.filter_list, color: Color(0xFF1D4ED8), size: 20),
+                Text(
+                  'Active Filters: ',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900, fontSize: 13),
                 ),
-                const SizedBox(width: 6),
+                if (_selectedDepartmentName != null)
+                  Chip(
+                    label: Text('Dept: $_selectedDepartmentName', style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Colors.white,
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () {
+                      setState(() {
+                        _selectedDepartmentId = null;
+                        _selectedDepartmentName = null;
+                      });
+                    },
+                  ),
+                if (_statusFilter != 'All')
+                  Chip(
+                    label: Text('Status: $_statusFilter', style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Colors.white,
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () => setState(() => _statusFilter = 'All'),
+                  ),
+                if (_selectedDateFilterMode != 'All')
+                  Chip(
+                    label: Text('Date: $_selectedDateFilterMode', style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Colors.white,
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () => setState(() {
+                      _selectedDateFilterMode = 'All';
+                      _customSelectedDate = null;
+                    }),
+                  ),
+                if (_searchQuery.isNotEmpty)
+                  Chip(
+                    label: Text('Search: "$_searchQuery"', style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Colors.white,
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  ),
               ],
-              if (_statusFilter != 'All') ...[
-                Chip(
-                  label: Text('Status: $_statusFilter', style: const TextStyle(fontSize: 12)),
-                  backgroundColor: Colors.white,
-                  visualDensity: VisualDensity.compact,
-                  onDeleted: () => setState(() => _statusFilter = 'All'),
-                ),
-                const SizedBox(width: 6),
-              ],
-              if (_selectedDateFilterMode != 'All') ...[
-                Chip(
-                  label: Text('Date: $_selectedDateFilterMode', style: const TextStyle(fontSize: 12)),
-                  backgroundColor: Colors.white,
-                  visualDensity: VisualDensity.compact,
-                  onDeleted: () => setState(() {
-                    _selectedDateFilterMode = 'All';
-                    _customSelectedDate = null;
-                  }),
-                ),
-                const SizedBox(width: 6),
-              ],
-              if (_searchQuery.isNotEmpty) ...[
-                Chip(
-                  label: Text('Search: "$_searchQuery"', style: const TextStyle(fontSize: 12)),
-                  backgroundColor: Colors.white,
-                  visualDensity: VisualDensity.compact,
-                  onDeleted: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                ),
-              ],
-            ],
+            ),
           ),
+          const SizedBox(width: 10),
           TextButton(
             onPressed: () {
               setState(() {
@@ -765,21 +792,19 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
           ),
           const SizedBox(height: 14),
           // Date Filter Chips
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 'Admission Date: ',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
               ),
-              const SizedBox(width: 8),
               _buildDateChip('All', 'All Dates'),
-              const SizedBox(width: 6),
               _buildDateChip('Today', 'Today'),
-              const SizedBox(width: 6),
               _buildDateChip('Yesterday', 'Yesterday'),
-              const SizedBox(width: 6),
               _buildDateChip('Tomorrow', 'Tomorrow'),
-              const SizedBox(width: 6),
               InkWell(
                 onTap: () async {
                   final picked = await showDatePicker(
