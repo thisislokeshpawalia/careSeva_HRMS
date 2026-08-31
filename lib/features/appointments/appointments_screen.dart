@@ -962,6 +962,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     DataColumn(label: Text('Phone')),
                     DataColumn(label: Text('Booking Type')),
                     DataColumn(label: Text('Via')),
+                    DataColumn(label: Text('Payment Status')),
                     DataColumn(label: Text('Status')),
                     DataColumn(label: Text('Actions')),
                   ],
@@ -980,6 +981,12 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     final status = appt['status'] ?? 'BOOKED';
                     final rawSource = (appt['booking_source'] ?? 'CARESEVA_APP').toString().toUpperCase();
                     final isDirect = rawSource.contains('HMS') || rawSource.contains('DIRECT') || rawSource.contains('REGISTRY');
+
+                    final paymentOption = (appt['payment_option'] ?? 'full').toString().toLowerCase();
+                    final totalFee = (appt['total_fee'] as num?)?.toDouble() ?? 500.0;
+                    final paidAmount = (appt['paid_amount'] as num?)?.toDouble() ?? (paymentOption == 'advance' ? (totalFee * 0.20) : totalFee);
+                    final remainingAmount = (appt['remaining_amount'] as num?)?.toDouble() ?? (totalFee - paidAmount);
+                    final isAdvance = paymentOption == 'advance' || remainingAmount > 0;
 
                     return DataRow(
                       cells: [
@@ -1033,7 +1040,13 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1108,6 +1121,50 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Payment Status Column
+                        DataCell(
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isAdvance ? Colors.orange.shade50 : Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: isAdvance ? Colors.orange.shade300 : Colors.green.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isAdvance ? Icons.schedule : Icons.check_circle,
+                                  size: 14,
+                                  color: isAdvance ? Colors.orange.shade800 : Colors.green.shade700,
+                                ),
+                                const SizedBox(width: 6),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      isAdvance ? '20% Adv (₹${paidAmount.toStringAsFixed(0)})' : '100% Paid',
+                                      style: TextStyle(
+                                        color: isAdvance ? Colors.orange.shade900 : Colors.green.shade800,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    Text(
+                                      isAdvance ? '₹${remainingAmount.toStringAsFixed(0)} due at desk' : '₹${totalFee.toStringAsFixed(0)} full',
+                                      style: TextStyle(
+                                        color: isAdvance ? Colors.orange.shade800 : Colors.green.shade700,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

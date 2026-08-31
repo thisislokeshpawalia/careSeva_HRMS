@@ -241,6 +241,7 @@ class _DepartmentsCard extends ConsumerWidget {
     final nameCtrl = TextEditingController(text: dept?['name'] ?? '');
     final specialtyCtrl = TextEditingController(text: dept?['specialty'] ?? '');
     final descCtrl = TextEditingController(text: dept?['description'] ?? '');
+    final feeCtrl = TextEditingController(text: (dept?['consultation_fee'] ?? 0.0).toString());
 
     showDialog(
       context: context,
@@ -258,6 +259,12 @@ class _DepartmentsCard extends ConsumerWidget {
                     const SizedBox(height: 16),
                     TextField(controller: specialtyCtrl, decoration: const InputDecoration(labelText: 'Specialty')),
                     const SizedBox(height: 16),
+                    TextField(
+                      controller: feeCtrl,
+                      decoration: const InputDecoration(labelText: 'Department Consultation Fee (₹)', prefixText: '₹ '),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
                     TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description')),
                   ],
                 ),
@@ -272,6 +279,7 @@ class _DepartmentsCard extends ConsumerWidget {
                       'name': nameCtrl.text,
                       'specialty': specialtyCtrl.text,
                       'description': descCtrl.text,
+                      'consultation_fee': double.tryParse(feeCtrl.text) ?? 0.0,
                     };
                     final hospitalId = ref.read(authProvider).hospitalId!;
                     final success = isEdit
@@ -347,7 +355,10 @@ class _DepartmentsCard extends ConsumerWidget {
   Widget _buildDeptTile(BuildContext context, WidgetRef ref, Map<String, dynamic> dept) {
     final name = dept['name'] ?? 'Unknown';
     final desc = dept['specialty'] ?? '';
-    final doctors = 0; // Mock until API supports it
+    final doctors = dept['doctor_count'] ?? 0;
+    final fee = (dept['consultation_fee'] as num?)?.toDouble() ?? 0.0;
+    final feeStr = fee > 0 ? ' • Fee: ₹${fee.toStringAsFixed(0)}' : '';
+
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const CircleAvatar(
@@ -355,7 +366,7 @@ class _DepartmentsCard extends ConsumerWidget {
         child: Icon(Icons.local_hospital, color: Color(0xFF1565C0)),
       ),
       title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text('$desc • $doctors Doctors'),
+      subtitle: Text('$desc • $doctors Doctors$feeStr'),
       trailing: IconButton(
         icon: const Icon(Icons.edit_outlined),
         onPressed: () => _showAddEditDepartmentDialog(context, ref, dept),

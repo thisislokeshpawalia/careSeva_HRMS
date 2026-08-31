@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/api_config.dart';
 import '../auth/providers/auth_provider.dart';
 import '../../core/providers/patient_provider.dart';
 import '../../core/providers/appointment_provider.dart';
@@ -1234,7 +1237,55 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
   String _gender = 'Male';
   String? _selectedDeptId;
   String? _selectedDeptName;
+  
+  List<Map<String, dynamic>> _doctors = [];
+  String? _selectedDoctorId;
+  String? _selectedDoctorName;
+  double _selectedDoctorFee = 500.0;
+  bool _isLoadingDoctors = false;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fetch doctors when initial department is available
+    widget.deptOverviewAsync.whenData((depts) {
+      if (depts.isNotEmpty) {
+        _selectedDeptId = depts.first['id'];
+        _selectedDeptName = depts.first['name'];
+        _fetchDoctorsForDept(_selectedDeptId!);
+      }
+    });
+  }
+
+  Future<void> _fetchDoctorsForDept(String deptId) async {
+    setState(() => _isLoadingDoctors = true);
+    try {
+      final res = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/management/${widget.hospitalId}/doctors'));
+      if (res.statusCode == 200) {
+        final List<dynamic> allDocs = jsonDecode(res.body);
+        final filtered = allDocs.where((d) => d['department_id'] == deptId && (d['status'] == 'ACTIVE' || d['status'] == null)).toList();
+        if (mounted) {
+          setState(() {
+            _doctors = filtered.cast<Map<String, dynamic>>();
+            _isLoadingDoctors = false;
+            if (_doctors.isNotEmpty) {
+              _selectedDoctorId = _doctors.first['id'];
+              _selectedDoctorName = _doctors.first['name'];
+              final fee = (_doctors.first['consultation_fee'] as num?)?.toDouble() ?? 0.0;
+              _selectedDoctorFee = fee > 0 ? fee : 500.0;
+            } else {
+              _selectedDoctorId = null;
+              _selectedDoctorName = null;
+              _selectedDoctorFee = 500.0;
+            }
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingDoctors = false);
+    }
+  }
 
   /// Exact age calculation using YYYY/MM/DD
   int _calculateAgeFromDob(DateTime dob) {
@@ -1284,6 +1335,16 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
       return;
     }
 
+    if (_selectedDoctorId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.red,
+          content: Text('Please select an attending doctor. Selecting a doctor is mandatory.'),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final dobStr = DateFormat('yyyy/MM/dd').format(_selectedDob!);
@@ -1297,13 +1358,15 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
       'phone': _phoneController.text.trim(),
       'department_id': _selectedDeptId,
       'department_name': _selectedDeptName,
+      'doctor_id': _selectedDoctorId,
+      'doctor_name': _selectedDoctorName,
       'last_visit': todayStr,
       'registration_source': 'DIRECT_WALKIN',
       'hospital_id': widget.hospitalId,
       'payment_status': 'DONE',
       'payment_option': 'full',
-      'total_fee': 500.0,
-      'paid_amount': 500.0,
+      'total_fee': _selectedDoctorFee,
+      'paid_amount': _selectedDoctorFee,
       'remaining_amount': 0.0,
     };
 
@@ -1330,7 +1393,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Payment Successful! ₹500 full fee collected at counter. Patient registered (PID: ${result['pid']})$queueMsg (Payment Status: Done)',
+                    'Payment Successful! ₹${_selectedDoctorFee.toStringAsFixed(0)} fee collected at counter for Dr. $_selectedDoctorName. Patient registered (PID: ${result['pid']})$queueMsg',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -1566,6 +1629,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                     if (_selectedDeptId == null && departments.isNotEmpty) {
                       _selectedDeptId = departments.first['id'];
                       _selectedDeptName = departments.first['name'];
+                      _fetchDoctorsForDept(_selectedDeptId!);
                     }
 
                     return Container(
@@ -1592,6 +1656,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                                 _selectedDeptId = val;
                                 _selectedDeptName = matched['name'] ?? 'General';
                               });
+                              _fetchDoctorsForDept(val);
                             }
                           },
                         ),
@@ -1603,7 +1668,69 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // 5. Last Visit & Registration Source
+                // 5. Attending Doctor (MANDATORY)
+                const Text('Attending Doctor * (Mandatory)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                if (_isLoadingDoctors)
+                  const LinearProgressIndicator()
+                else if (_doctors.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade300),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.warning_amber, color: Colors.amber, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'No active doctors found in this department. Please assign a doctor first in Doctors Management.',
+                            style: TextStyle(fontSize: 12, color: Colors.black87),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _selectedDoctorId == null ? Colors.red.shade300 : Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: _selectedDoctorId,
+                        hint: const Text('Select Doctor (Mandatory)'),
+                        items: _doctors.map((doc) {
+                          final fee = (doc['consultation_fee'] as num?)?.toDouble() ?? 0.0;
+                          final feeLabel = fee > 0 ? ' (Fee: ₹${fee.toStringAsFixed(0)})' : ' (Fee: ₹500)';
+                          return DropdownMenuItem<String>(
+                            value: doc['id'] as String,
+                            child: Text('${doc['name']}$feeLabel'),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            final matched = _doctors.firstWhere((d) => d['id'] == val, orElse: () => {});
+                            setState(() {
+                              _selectedDoctorId = val;
+                              _selectedDoctorName = matched['name'] ?? 'Doctor';
+                              final fee = (matched['consultation_fee'] as num?)?.toDouble() ?? 0.0;
+                              _selectedDoctorFee = fee > 0 ? fee : 500.0;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                // 6. Last Visit & Registration Source
                 Row(
                   children: [
                     // Last Visit
@@ -1670,7 +1797,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // 6. Fee & Counter Payment Gateway Card
+                // 7. Fee & Counter Payment Gateway Card
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -1689,18 +1816,20 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                         child: Icon(Icons.payments_outlined, color: Colors.green.shade800, size: 20),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Counter Payment (100% Full Fees): ₹500',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B5E20)),
+                              'Counter Payment (100% Full Fees): ₹${_selectedDoctorFee.toStringAsFixed(0)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B5E20)),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
-                              'Direct walk-in payment will be marked as Done upon submission.',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+                              _selectedDoctorName != null 
+                                  ? 'Determined by Dr. $_selectedDoctorName fee schedule. Marked as Done at counter.' 
+                                  : 'Select doctor above to confirm fee schedule.',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
                             ),
                           ],
                         ),
