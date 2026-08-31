@@ -132,6 +132,12 @@ class _DashboardSidebar extends ConsumerWidget {
                   onTap: () => context.go('/appointments'),
                 ),
                 _SidebarItem(
+                  icon: Icons.folder_shared_outlined,
+                  title: 'Patient Records',
+                  isSelected: location == '/patient-records',
+                  onTap: () => context.go('/patient-records'),
+                ),
+                _SidebarItem(
                   icon: Icons.settings_outlined,
                   title: 'Settings',
                   isSelected: location == '/settings',

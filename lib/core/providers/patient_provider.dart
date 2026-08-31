@@ -21,6 +21,24 @@ final hospitalPatientsProvider = FutureProvider.family<List<Map<String, dynamic>
   }
 });
 
+final hospitalPatientDirectoryProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, hospitalId) async {
+  try {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.httpBaseUrl}/api/patients/hospital/$hospitalId/directory'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    } else {
+      throw Exception('Failed to load patient directory: ${response.statusCode}');
+    }
+  } catch (e) {
+    return [];
+  }
+});
+
 Future<Map<String, dynamic>?> registerPatientApi(Map<String, dynamic> patientData) async {
   try {
     final response = await http.post(
