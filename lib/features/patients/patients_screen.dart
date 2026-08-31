@@ -566,11 +566,11 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       child: patientsAsync.when(
         skipLoadingOnRefresh: true,
         data: (patients) {
-          // 1. Sort strictly by timestamp descending (newest registrations at top)
+          // 1. Sort by latest activity / visit timestamp descending (newest activity / registrations at top)
           var filtered = List<Map<String, dynamic>>.from(patients);
           filtered.sort((a, b) {
-            final timeA = _parseTimestamp(a['created_at']);
-            final timeB = _parseTimestamp(b['created_at']);
+            final timeA = _parseTimestamp(a['updated_at'] ?? a['created_at']);
+            final timeB = _parseTimestamp(b['updated_at'] ?? b['created_at']);
             return timeB.compareTo(timeA);
           });
 
