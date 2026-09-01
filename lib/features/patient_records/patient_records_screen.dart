@@ -26,8 +26,8 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
   @override
   void initState() {
     super.initState();
-    // Background refresh every 6 seconds to keep records in sync
-    _refreshTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+    // Background refresh every 30 seconds to keep records in sync without network flooding
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) {
         final authState = ref.read(authProvider);
         final hospitalId = (authState.hospitalId != null && authState.hospitalId != 'dummy_hospital_123')
@@ -63,6 +63,7 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
             _buildHeader(hospitalId),
             const SizedBox(height: 24),
             directoryAsync.when(
+              skipLoadingOnRefresh: true,
               data: (patients) => _buildMetricsCards(patients),
               loading: () => const Center(child: LinearProgressIndicator()),
               error: (_, stack) => const SizedBox.shrink(),
@@ -343,6 +344,7 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
 
   Widget _buildDirectoryTable(AsyncValue<List<Map<String, dynamic>>> directoryAsync) {
     return directoryAsync.when(
+      skipLoadingOnRefresh: true,
       data: (patients) {
         var filtered = List<Map<String, dynamic>>.from(patients);
 

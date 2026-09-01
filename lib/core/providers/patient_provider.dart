@@ -8,15 +8,17 @@ final hospitalPatientsProvider = FutureProvider.family<List<Map<String, dynamic>
     final response = await http.get(
       Uri.parse('${ApiConfig.httpBaseUrl}/api/patients/hospital/$hospitalId'),
       headers: {'Content-Type': 'application/json'},
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((e) => e as Map<String, dynamic>).toList();
     } else {
-      throw Exception('Failed to load patients: ${response.statusCode}');
+      // print('Failed to load patients: ${response.statusCode}');
+      return [];
     }
   } catch (e) {
+    // print('Error in hospitalPatientsProvider: $e');
     return [];
   }
 });
@@ -26,13 +28,13 @@ final hospitalPatientDirectoryProvider = FutureProvider.family<List<Map<String, 
     final response = await http.get(
       Uri.parse('${ApiConfig.httpBaseUrl}/api/patients/hospital/$hospitalId/directory'),
       headers: {'Content-Type': 'application/json'},
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((e) => e as Map<String, dynamic>).toList();
     } else {
-      throw Exception('Failed to load patient directory: ${response.statusCode}');
+      return [];
     }
   } catch (e) {
     return [];

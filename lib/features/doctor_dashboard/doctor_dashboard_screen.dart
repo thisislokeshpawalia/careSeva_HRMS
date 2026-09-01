@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
@@ -221,9 +222,18 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: SingleChildScrollView(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter): _callNext,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter): _callNext,
+        const SingleActivator(LogicalKeyboardKey.arrowRight): _callNext,
+        const SingleActivator(LogicalKeyboardKey.arrowDown): _completeCurrent,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: Colors.grey.shade50,
+          body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,8 +331,10 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildCurrentPatientCard() {
     return Container(
@@ -404,7 +416,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           child: ElevatedButton.icon(
             onPressed: hasMore ? _callNext : null,
             icon: const Icon(Icons.person_add_alt_1),
-            label: const Text('Call Next Patient'),
+            label: const Text('Call Next Patient [Enter / →]'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 20),
               backgroundColor: Colors.green.shade600,
@@ -421,7 +433,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           child: OutlinedButton.icon(
             onPressed: _currentPatient != null ? _completeCurrent : null,
             icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Complete Current'),
+            label: const Text('Complete Current [↓]'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 20),
               foregroundColor: Colors.blue.shade800,

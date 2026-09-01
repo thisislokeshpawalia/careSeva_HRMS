@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/api_config.dart';
@@ -28,9 +29,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   @override
   void initState() {
     super.initState();
-    // Real-time background auto-sync every 4 seconds
-    // Ensures new patient bookings from mobile app appear immediately without manual page refresh
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    // Real-time background auto-sync every 20 seconds
+    // Ensures new patient bookings appear while preventing network congestion
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (mounted) {
         final authState = ref.read(authProvider);
         final hospitalId = (authState.hospitalId != null && authState.hospitalId != 'dummy_hospital_123')
@@ -1187,7 +1188,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     if (rawCreatedAt == null) return '-';
     try {
       DateTime parsed = _parseTimestamp(rawCreatedAt);
-      return DateFormat('dd MMM yyyy, hh:mm a').format(parsed);
+      return DateFormat('dd MMM yyyy, HH:mm').format(parsed);
     } catch (e) {
       return rawCreatedAt.toString();
     }
@@ -1416,12 +1417,17 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
   Widget build(BuildContext context) {
     final todayFormatted = DateFormat('yyyy/MM/dd').format(DateTime.now());
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 580,
-        padding: const EdgeInsets.all(28),
-        child: Form(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter): _submit,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter): _submit,
+      },
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          width: 580,
+          padding: const EdgeInsets.all(28),
+          child: Form(
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
@@ -1471,6 +1477,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _nameController,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     hintText: 'Enter patient full name',
                     prefixIcon: const Icon(Icons.person_outline),
@@ -1606,6 +1613,8 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                           TextFormField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _submit(),
                             decoration: InputDecoration(
                               hintText: '10-digit mobile number',
                               prefixIcon: const Icon(Icons.phone_outlined),
@@ -1870,7 +1879,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                               height: 18,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
-                          : const Text('Complete Registration & Generate PID', style: TextStyle(fontWeight: FontWeight.bold)),
+                          : const Text('Complete Registration & Generate PID [Enter]', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -1879,8 +1888,9 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _LiveClockBadge extends StatefulWidget {
@@ -1916,7 +1926,7 @@ class _LiveClockBadgeState extends State<_LiveClockBadge> {
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('EEE, dd MMM yyyy').format(_currentTime);
-    final timeStr = DateFormat('hh:mm:ss a').format(_currentTime);
+    final timeStr = DateFormat('HH:mm:ss').format(_currentTime);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

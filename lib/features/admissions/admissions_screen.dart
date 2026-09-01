@@ -2509,7 +2509,7 @@ class _AdmissionLiveClockBadgeState extends State<_AdmissionLiveClockBadge> {
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('EEE, dd MMM yyyy').format(_nowIst);
-    final timeStr = DateFormat('hh:mm:ss a').format(_nowIst);
+    final timeStr = DateFormat('HH:mm:ss').format(_nowIst);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

@@ -12,6 +12,13 @@ class PatientHistory {
   final String token;
   final String status;
   final DateTime updatedAt;
+  final String? appointmentDate;
+  final String? appointmentTime;
+  final DateTime? createdAt;
+  final String? timeSlot;
+  final String? patientPhone;
+  final int? patientAge;
+  final String? patientGender;
 
   PatientHistory({
     required this.id,
@@ -19,15 +26,43 @@ class PatientHistory {
     required this.token,
     required this.status,
     required this.updatedAt,
+    this.appointmentDate,
+    this.appointmentTime,
+    this.createdAt,
+    this.timeSlot,
+    this.patientPhone,
+    this.patientAge,
+    this.patientGender,
   });
+
+  static DateTime _parseDateTime(dynamic raw) {
+    if (raw == null) return DateTime.now();
+    if (raw is DateTime) return raw.toLocal();
+    try {
+      String str = raw.toString().trim();
+      if (!str.endsWith('Z') && !str.contains('+')) {
+        return DateTime.parse('${str}Z').toLocal();
+      }
+      return DateTime.parse(str).toLocal();
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
 
   factory PatientHistory.fromJson(Map<String, dynamic> json) {
     return PatientHistory(
-      id: json['id'],
+      id: json['id'] ?? '',
       name: json['patient_name'] ?? 'Unknown',
       token: json['token_number'].toString(),
-      status: json['status'],
-      updatedAt: DateTime.parse(json['updated_at']).toLocal(),
+      status: json['status'] ?? 'COMPLETED',
+      updatedAt: _parseDateTime(json['updated_at']),
+      appointmentDate: json['appointment_date'],
+      appointmentTime: json['appointment_time'],
+      createdAt: json['created_at'] != null ? _parseDateTime(json['created_at']) : null,
+      timeSlot: json['time_slot'],
+      patientPhone: json['patient_phone'],
+      patientAge: json['patient_age'] is int ? json['patient_age'] : int.tryParse(json['patient_age']?.toString() ?? ''),
+      patientGender: json['patient_gender'],
     );
   }
 }
@@ -107,6 +142,40 @@ class _DoctorPatientsHistoryScreenState extends ConsumerState<DoctorPatientsHist
       });
       _fetchHistory();
     }
+  }
+
+  String _formatRowDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+    try {
+      final trimmed = dateStr.trim();
+      if (trimmed.startsWith('20')) {
+        final parsed = DateTime.parse(trimmed);
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final apptDate = DateTime(parsed.year, parsed.month, parsed.day);
+
+        final diffDays = apptDate.difference(today).inDays;
+        final formattedDate = DateFormat('dd MMM yyyy').format(parsed);
+
+        if (diffDays == 0) {
+          return 'Today, $formattedDate';
+        } else if (diffDays == 1) {
+          return 'Tomorrow, $formattedDate';
+        } else if (diffDays == -1) {
+          return 'Yesterday, $formattedDate';
+        } else {
+          return formattedDate;
+        }
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  String _formatTime24(DateTime? dt) {
+    if (dt == null) return '';
+    return DateFormat('HH:mm').format(dt.toLocal());
   }
 
   @override
@@ -221,17 +290,59 @@ class _DoctorPatientsHistoryScreenState extends ConsumerState<DoctorPatientsHist
                                   patient.name,
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Text('Token: #${patient.token}'),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      DateFormat('MMM dd, yyyy - hh:mm a').format(patient.updatedAt),
-                                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                    ),
-                                  ],
+                                subtitle: Builder(
+                                  builder: (context) {
+                                    final displayDate = (patient.appointmentDate != null && patient.appointmentDate!.isNotEmpty)
+                                        ? _formatRowDate(patient.appointmentDate)
+                                        : DateFormat('dd MMM yyyy').format(patient.updatedAt);
+                                    final completedTime = _formatTime24(patient.updatedAt);
+                                    final bookedTime = patient.appointmentTime ?? (patient.createdAt != null ? _formatTime24(patient.createdAt) : '');
+                                    
+                                    final details = [
+                                      if (patient.patientAge != null && patient.patientAge! > 0) '${patient.patientAge} yrs',
+                                      if (patient.patientGender != null && patient.patientGender != '-') patient.patientGender,
+                                      if (patient.patientPhone != null && patient.patientPhone!.isNotEmpty) patient.patientPhone,
+                                    ].join(' • ');
+
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              'Token: #${patient.token}',
+                                              style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1565C0)),
+                                            ),
+                                            if (details.isNotEmpty) ...[
+                                              const SizedBox(width: 8),
+                                              Text('($details)', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                                            ],
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.calendar_today_outlined, size: 13, color: Color(0xFF1565C0)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              displayDate,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            const Icon(Icons.access_time, size: 13, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              bookedTime.isNotEmpty
+                                                  ? 'Booked $bookedTime • Completed $completedTime'
+                                                  : 'Completed $completedTime',
+                                              style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
                                 trailing: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

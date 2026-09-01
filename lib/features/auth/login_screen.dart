@@ -124,6 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       if (_selectedRole == UserRole.admin) ...[
                         TextFormField(
                           controller: _emailController,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: 'Email Address',
                             prefixIcon: Icon(Icons.email_outlined),
@@ -138,6 +139,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _passwordController,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _login(),
                           decoration: const InputDecoration(
                             labelText: 'Password',
                             prefixIcon: Icon(Icons.lock_outline),
@@ -153,6 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ] else ...[
                         TextFormField(
                           controller: _emailController,
+                          textInputAction: TextInputAction.next,
                           textCapitalization: TextCapitalization.characters,
                           decoration: const InputDecoration(
                             labelText: 'Hospital ID (HopID)',
@@ -168,6 +172,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _passwordController,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _login(),
                           textCapitalization: TextCapitalization.characters,
                           decoration: const InputDecoration(
                             labelText: 'Doctor ID (DocID)',

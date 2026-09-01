@@ -857,7 +857,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           parsed = DateTime.parse(str).toLocal();
         }
       }
-      return DateFormat('hh:mm a').format(parsed);
+      return DateFormat('HH:mm').format(parsed);
     } catch (e) {
       return '';
     }
@@ -1282,7 +1282,7 @@ class _LiveClockBadgeState extends State<_LiveClockBadge> {
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('EEE, dd MMM yyyy').format(_currentTime);
-    final timeStr = DateFormat('hh:mm:ss a').format(_currentTime);
+    final timeStr = DateFormat('HH:mm:ss').format(_currentTime);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

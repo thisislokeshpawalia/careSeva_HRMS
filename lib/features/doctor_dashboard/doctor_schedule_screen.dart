@@ -469,7 +469,7 @@ class _DoctorScheduleScreenState extends ConsumerState<DoctorScheduleScreen> {
         parsed = DateTime.parse(rawCreatedAt.toString());
       }
       final local = parsed.toLocal();
-      return DateFormat('hh:mm a').format(local);
+      return DateFormat('HH:mm').format(local);
     } catch (e) {
       return '';
     }
