@@ -1375,10 +1375,11 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
 
     if (mounted) {
       setState(() => _isSubmitting = false);
-      if (result != null) {
+      if (result.isSuccess && result.data != null) {
         Navigator.of(context).pop();
         widget.onSuccess();
-        final token = result['token_number'];
+        final resData = result.data!;
+        final token = resData['token_number'];
         final dept = _selectedDeptName ?? 'Department';
         final queueMsg = token != null ? ' & Queued in $dept (Token #$token)' : '';
 
@@ -1394,7 +1395,7 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Payment Successful! ₹${_selectedDoctorFee.toStringAsFixed(0)} fee collected at counter for Dr. $_selectedDoctorName. Patient registered (PID: ${result['pid']})$queueMsg',
+                    'Payment Successful! ₹${_selectedDoctorFee.toStringAsFixed(0)} fee collected at counter for Dr. $_selectedDoctorName. Patient registered (PID: ${resData['pid']})$queueMsg',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -1402,15 +1403,199 @@ class _RegisterPatientDialogState extends State<_RegisterPatientDialog> {
             ),
           ),
         );
+      } else if (result.existingAppointment != null) {
+        _showDuplicateAppointmentDialog(result.existingAppointment!, result.errorMessage);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.red,
-            content: Text('Failed to register patient. Please check your inputs.'),
+          SnackBar(
+            backgroundColor: Colors.red.shade700,
+            content: Text(result.errorMessage ?? 'Failed to register patient. Please check your inputs.'),
           ),
         );
       }
     }
+  }
+
+  void _showDuplicateAppointmentDialog(Map<String, dynamic> appt, String? errorMsg) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Icon(Icons.event_busy_rounded, color: Colors.orange.shade800, size: 26),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Appointment Already Exists',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFB71C1C)),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Duplicate booking restriction enforced',
+                    style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.normal),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                errorMsg ?? 'An active appointment is already scheduled for this patient with the selected doctor today.',
+                style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
+              ),
+              const SizedBox(height: 16),
+
+              // Existing Appointment Summary Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1565C0).withAlpha(25),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                appt['pid'] ?? 'CS-P-PENDING',
+                                style: const TextStyle(
+                                  color: Color(0xFF1565C0),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              appt['patient_name'] ?? _nameController.text.trim(),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.green.shade300),
+                          ),
+                          child: Text(
+                            appt['status'] ?? 'BOOKED',
+                            style: TextStyle(
+                              color: Colors.green.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 20),
+                    _buildApptDetailRow(Icons.medical_services_outlined, 'Doctor', appt['doctor_name'] ?? 'Attending Doctor'),
+                    const SizedBox(height: 8),
+                    _buildApptDetailRow(Icons.domain_outlined, 'Department', appt['department_name'] ?? _selectedDeptName ?? 'General'),
+                    const SizedBox(height: 8),
+                    _buildApptDetailRow(Icons.calendar_today_outlined, 'Date & Slot', '${appt['appointment_date'] ?? 'Today'} • ${appt['time_slot'] ?? 'Regular OPD'}'),
+                    const SizedBox(height: 8),
+                    _buildApptDetailRow(Icons.confirmation_number_outlined, 'Queue Token', '#${appt['token_number'] ?? 'Assigned'}'),
+                    const SizedBox(height: 8),
+                    _buildApptDetailRow(Icons.devices_outlined, 'Booked Via', appt['booking_source'] == 'CARESEVA_APP' ? 'CareSeva Mobile App' : 'Direct Walk-in (HMS Desk)'),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 14),
+              // Anti-duplicacy guidance note
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.blue.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Multiple appointments for the same doctor on the same day are restricted to avoid queue duplicacy. If the patient needs a consultation with a different doctor, please select another department/doctor.',
+                        style: TextStyle(fontSize: 12, color: Colors.blue.shade900, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1565C0),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Understood / Change Doctor', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApptDetailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 95,
+          child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
+          ),
+        ),
+      ],
+    );
   }
 
   @override

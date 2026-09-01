@@ -41,7 +41,23 @@ final hospitalPatientDirectoryProvider = FutureProvider.family<List<Map<String, 
   }
 });
 
-Future<Map<String, dynamic>?> registerPatientApi(Map<String, dynamic> patientData) async {
+class RegisterPatientResult {
+  final bool isSuccess;
+  final Map<String, dynamic>? data;
+  final Map<String, dynamic>? existingAppointment;
+  final String? errorMessage;
+  final int statusCode;
+
+  RegisterPatientResult({
+    required this.isSuccess,
+    this.data,
+    this.existingAppointment,
+    this.errorMessage,
+    required this.statusCode,
+  });
+}
+
+Future<RegisterPatientResult> registerPatientApi(Map<String, dynamic> patientData) async {
   try {
     final response = await http.post(
       Uri.parse('${ApiConfig.httpBaseUrl}/api/patients/'),
@@ -49,13 +65,44 @@ Future<Map<String, dynamic>?> registerPatientApi(Map<String, dynamic> patientDat
       body: jsonEncode(patientData),
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return RegisterPatientResult(
+        isSuccess: true,
+        data: decoded,
+        statusCode: response.statusCode,
+      );
     } else {
-      return null;
+      Map<String, dynamic>? existingAppt;
+      String? message;
+      try {
+        final errJson = jsonDecode(response.body);
+        if (errJson is Map<String, dynamic>) {
+          final detail = errJson['detail'];
+          if (detail is Map<String, dynamic>) {
+            message = detail['message']?.toString();
+            if (detail['existing_appointment'] is Map<String, dynamic>) {
+              existingAppt = detail['existing_appointment'] as Map<String, dynamic>;
+            }
+          } else if (detail != null) {
+            message = detail.toString();
+          }
+        }
+      } catch (_) {}
+
+      return RegisterPatientResult(
+        isSuccess: false,
+        existingAppointment: existingAppt,
+        errorMessage: message ?? 'Registration failed with status ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
     }
   } catch (e) {
-    return null;
+    return RegisterPatientResult(
+      isSuccess: false,
+      errorMessage: 'Network error: $e',
+      statusCode: 500,
+    );
   }
 }
 
