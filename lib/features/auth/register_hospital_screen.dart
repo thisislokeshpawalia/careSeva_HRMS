@@ -220,12 +220,14 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
-            padding: const EdgeInsets.all(32),
+            constraints: const BoxConstraints(maxWidth: 600),
             child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(32.0),
+                padding: const EdgeInsets.all(24.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -403,48 +405,33 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _msNameController,
-                              decoration: const InputDecoration(labelText: 'Medical Superintendent / CMO', prefixIcon: Icon(Icons.medical_services_outlined)),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _msRegController,
-                              decoration: const InputDecoration(labelText: 'State Medical Council / NMC Reg #'),
-                            ),
-                          ),
-                        ],
+                      TextFormField(
+                        controller: _msNameController,
+                        decoration: const InputDecoration(labelText: 'Medical Superintendent / CMO Name', prefixIcon: Icon(Icons.medical_services_outlined)),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _bedsController,
-                              decoration: const InputDecoration(labelText: 'Total Monitored Beds', prefixIcon: Icon(Icons.hotel_outlined)),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _nabhAccreditation,
-                              decoration: const InputDecoration(labelText: 'NABH Accreditation'),
-                              items: const [
-                                DropdownMenuItem(value: 'NONE', child: Text('None / Non-Accredited')),
-                                DropdownMenuItem(value: 'ENTRY_LEVEL', child: Text('NABH Entry Level')),
-                                DropdownMenuItem(value: 'FULL_NABH', child: Text('Full NABH Certified')),
-                                DropdownMenuItem(value: 'NABL', child: Text('NABL (Diagnostics)')),
-                              ],
-                              onChanged: (val) => setState(() => _nabhAccreditation = val ?? 'NONE'),
-                            ),
-                          ),
+                      TextFormField(
+                        controller: _msRegController,
+                        decoration: const InputDecoration(labelText: 'State Medical Council / NMC Reg #', prefixIcon: Icon(Icons.verified_outlined), hintText: 'e.g. MCI-2018-0921'),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _bedsController,
+                        decoration: const InputDecoration(labelText: 'Total Monitored Inpatient Beds', prefixIcon: Icon(Icons.hotel_outlined), hintText: 'e.g. 50'),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: _nabhAccreditation,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'NABH / Quality Accreditation', prefixIcon: Icon(Icons.workspace_premium_outlined)),
+                        items: const [
+                          DropdownMenuItem(value: 'NONE', child: Text('None / Non-Accredited', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'ENTRY_LEVEL', child: Text('NABH Entry Level', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'FULL_NABH', child: Text('Full NABH Certified', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'NABL', child: Text('NABL Certified (Diagnostics)', overflow: TextOverflow.ellipsis)),
                         ],
+                        onChanged: (val) => setState(() => _nabhAccreditation = val ?? 'NONE'),
                       ),
                       const SizedBox(height: 16),
                       CheckboxListTile(
