@@ -51,9 +51,74 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (success && mounted) {
         // Routing is handled by GoRouter redirect based on auth state
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login failed. Check your credentials.')),
-        );
+        final authState = ref.read(authProvider);
+        final err = authState.errorMessage ?? 'Login failed. Check your credentials.';
+
+        if (err.contains('REGISTRATION_REJECTED')) {
+          final cleanReason = err.replaceAll('REGISTRATION_REJECTED:', '').trim();
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.redAccent)),
+              title: const Row(
+                children: [
+                  Icon(Icons.cancel_rounded, color: Colors.redAccent, size: 28),
+                  SizedBox(width: 10),
+                  Text('Application Rejected', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your hospital em-panelment application was reviewed and rejected by the CareSeva Regulatory Directorate.',
+                    style: TextStyle(color: Color(0xFFE2E8F0), fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(cleanReason, style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'To re-apply or appeal, contact compliance@careseva.com.',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, foregroundColor: Colors.white),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Dismiss'),
+                ),
+              ],
+            ),
+          );
+        } else if (err.contains('REGISTRATION_PENDING')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Color(0xFFF59E0B),
+              behavior: SnackBarBehavior.floating,
+              content: Text('Hospital registration is currently undergoing verification by CareSeva Superadmin.'),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(err),
+              backgroundColor: Colors.red.shade800,
+            ),
+          );
+        }
       }
     }
   }

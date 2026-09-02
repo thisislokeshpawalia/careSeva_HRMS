@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_hospital_screen.dart';
+import '../../features/auth/verification_pending_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/dashboard/dashboard_shell.dart';
 import '../../features/hospital/hospital_settings_screen.dart';
@@ -30,6 +31,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterHospitalScreen(),
+      ),
+      GoRoute(
+        path: '/verification-pending',
+        builder: (context, state) => const VerificationPendingScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => DashboardShell(child: child),
@@ -85,20 +90,33 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (BuildContext context, GoRouterState state) {
       final bool isAuthenticated = authState.isAuthenticated;
       final UserRole role = authState.role;
-      final bool isLoginRoute = state.uri.path == '/login';
-      final bool isRegisterRoute = state.uri.path == '/register';
+      final String path = state.uri.path;
+      final bool isLoginRoute = path == '/login';
+      final bool isRegisterRoute = path == '/register';
+      final bool isPendingRoute = path == '/verification-pending';
 
       if (!isAuthenticated && !isLoginRoute && !isRegisterRoute) {
         return '/login';
       }
-      if (isAuthenticated && isLoginRoute) {
-        if (role == UserRole.admin) return '/dashboard';
-        if (role == UserRole.doctor) return '/doctor-dashboard';
-      }
-      
-      // Prevent role mixing
+
       if (isAuthenticated) {
-        final path = state.uri.path;
+        // Feature Lock: Newly registered / pending verification hospitals
+        if (authState.isPending) {
+          return isPendingRoute ? null : '/verification-pending';
+        }
+
+        // Locked & Logged out if Rejected
+        if (authState.isRejected) {
+          return '/login';
+        }
+
+        // Once Approved: If navigating to login or pending holding page, forward to dashboard
+        if (isLoginRoute || isPendingRoute) {
+          if (role == UserRole.admin) return '/dashboard';
+          if (role == UserRole.doctor) return '/doctor-dashboard';
+        }
+
+        // Prevent role mixing
         if (role == UserRole.admin && path.startsWith('/doctor-dashboard')) {
           return '/dashboard';
         }

@@ -11,6 +11,11 @@ class AuthState {
   final String? userId;
   final String? hospitalId;
   final String? doctorId;
+  final String verificationStatus; // 'APPROVED', 'PENDING', 'REJECTED', 'SUSPENDED'
+  final String? hopId;
+  final String? hospitalName;
+  final String? rejectionReason;
+  final String? errorMessage;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -18,7 +23,17 @@ class AuthState {
     this.userId,
     this.hospitalId,
     this.doctorId,
+    this.verificationStatus = 'APPROVED',
+    this.hopId,
+    this.hospitalName,
+    this.rejectionReason,
+    this.errorMessage,
   });
+
+  bool get isApproved => verificationStatus.toUpperCase() == 'APPROVED';
+  bool get isPending => verificationStatus.toUpperCase() == 'PENDING';
+  bool get isRejected => verificationStatus.toUpperCase() == 'REJECTED';
+  bool get isSuspended => verificationStatus.toUpperCase() == 'SUSPENDED';
 
   AuthState copyWith({
     bool? isAuthenticated,
@@ -26,6 +41,11 @@ class AuthState {
     String? userId,
     String? hospitalId,
     String? doctorId,
+    String? verificationStatus,
+    String? hopId,
+    String? hospitalName,
+    String? rejectionReason,
+    String? errorMessage,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -33,6 +53,11 @@ class AuthState {
       userId: userId ?? this.userId,
       hospitalId: hospitalId ?? this.hospitalId,
       doctorId: doctorId ?? this.doctorId,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      hopId: hopId ?? this.hopId,
+      hospitalName: hospitalName ?? this.hospitalName,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 }
@@ -50,6 +75,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final vStatus = (data['verification_status'] ?? 'APPROVED').toString().toUpperCase();
         
         state = state.copyWith(
           isAuthenticated: true, 
@@ -57,12 +83,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
           userId: data['id'],
           hospitalId: data['hospital_id'] ?? '6a8ea49ef17ddb14088aa5f7',
           doctorId: role == UserRole.doctor ? data['id'] : null,
+          verificationStatus: vStatus,
+          hopId: data['hop_id'],
+          hospitalName: data['hospital_name'],
+          rejectionReason: data['rejection_reason'],
+          errorMessage: null,
         );
         return true;
+      } else {
+        final err = jsonDecode(response.body);
+        final detail = err['detail']?.toString() ?? 'Login failed. Check your credentials.';
+        state = state.copyWith(errorMessage: detail);
+        return false;
       }
-      return false;
     } catch (e) {
-      // print('Login error: $e');
+      state = state.copyWith(errorMessage: 'Network connection error. Please try again.');
       return false;
     }
   }
@@ -84,13 +119,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
           userId: data['id'],
           hospitalId: data['hospital_id'],
           doctorId: data['id'],
+          verificationStatus: 'APPROVED',
+          hopId: data['hop_id'],
+          hospitalName: data['hospital_name'],
+          errorMessage: null,
         );
         return true;
+      } else {
+        final err = jsonDecode(response.body);
+        final detail = err['detail']?.toString() ?? 'Doctor login failed.';
+        state = state.copyWith(errorMessage: detail);
+        return false;
       }
-      return false;
     } catch (e) {
+      state = state.copyWith(errorMessage: 'Network error during doctor login.');
       return false;
     }
+  }
+
+  Future<Map<String, dynamic>?> checkHospitalStatus() async {
+    final hid = state.hospitalId ?? state.hopId;
+    if (hid == null) return null;
+    try {
+      final res = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/auth/hospital-status/$hid'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final vStatus = (data['verification_status'] ?? 'PENDING').toString().toUpperCase();
+        state = state.copyWith(
+          verificationStatus: vStatus,
+          hopId: data['hop_id'] ?? state.hopId,
+          hospitalName: data['name'] ?? state.hospitalName,
+          rejectionReason: data['rejection_reason'],
+        );
+        return data;
+      }
+    } catch (_) {}
+    return null;
   }
 
   void logout() {
