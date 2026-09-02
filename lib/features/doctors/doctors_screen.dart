@@ -182,7 +182,7 @@ class DoctorsScreen extends ConsumerWidget {
                               });
                             }
                             return DropdownButtonFormField<String>(
-                              value: selectedDeptId,
+                              initialValue: selectedDeptId,
                               decoration: const InputDecoration(labelText: 'Department'),
                               items: depts.map<DropdownMenuItem<String>>((d) {
                                 return DropdownMenuItem<String>(
@@ -198,7 +198,7 @@ class DoctorsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: statusCtrl.text.isEmpty ? 'ACTIVE' : statusCtrl.text,
+                          initialValue: statusCtrl.text.isEmpty ? 'ACTIVE' : statusCtrl.text,
                           decoration: const InputDecoration(labelText: 'Status'),
                           items: const [
                             DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
@@ -262,37 +262,49 @@ class DoctorsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final maxTitleWidth = constraints.maxWidth > 700 ? constraints.maxWidth - 200 : constraints.maxWidth;
+                return Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 12,
                   children: [
-                    Text(
-                      'Doctors Management',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1E293B),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxTitleWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Doctors Management',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1E293B),
+                                ),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Manage doctor profiles, consultation fees, and department assignments.',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Manage doctor profiles, consultation fees, and department assignments.',
-                      style: TextStyle(color: Colors.grey.shade600),
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddEditDoctorDialog(context, ref),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Doctor'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1565C0),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      ),
                     ),
                   ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _showAddEditDoctorDialog(context, ref),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Doctor'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1565C0),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
             const SizedBox(height: 24),
             Expanded(

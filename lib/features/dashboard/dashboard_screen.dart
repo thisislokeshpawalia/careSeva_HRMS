@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -25,28 +24,40 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxTitleWidth = constraints.maxWidth > 600 ? constraints.maxWidth - 200 : constraints.maxWidth;
+                    return Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 16,
+                      runSpacing: 12,
                       children: [
-                        Text(
-                          'Dashboard Overview',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0D47A1),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxTitleWidth),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Dashboard Overview',
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF0D47A1),
+                                    ),
                               ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Welcome back! Here is what is happening today in Indian Standard Time.',
+                                style: TextStyle(color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Welcome back! Here is what is happening today in Indian Standard Time.',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
+                        const _LiveClockBadge(),
                       ],
-                    ),
-                    const _LiveClockBadge(),
-                  ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 32),
                 Wrap(
@@ -75,10 +86,10 @@ class DashboardScreen extends ConsumerWidget {
                       color: const Color(0xFF00B0FF),
                     ),
                     _StatCard(
-                      title: 'Today\'s Revenue',
-                      value: '\$${stats['todays_revenue']}',
-                      trend: 'Today',
-                      icon: Icons.payments_outlined,
+                      title: 'Total Revenue',
+                      value: '₹${NumberFormat('#,##,###').format(stats['total_revenue'] ?? stats['todays_revenue'] ?? 0)}',
+                      trend: 'Today: ₹${NumberFormat('#,##,###').format(stats['todays_revenue'] ?? 0)}',
+                      icon: Icons.currency_rupee_rounded,
                       color: const Color(0xFF5E35B1),
                     ),
                   ],

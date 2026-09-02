@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -116,45 +115,59 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   }
 
   Widget _buildTopHeader(String hospitalId) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxTitleWidth = constraints.maxWidth > 700 ? constraints.maxWidth - 340 : constraints.maxWidth;
+        return Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 12,
           children: [
-            const Text(
-              'Appointments & Live Queue Monitor',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D47A1),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxTitleWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Appointments & Live Queue Monitor',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D47A1),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Real-time department queue status, bookings, and appointment logs (Indian Standard Time)',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Real-time department queue status, bookings, and appointment logs (Indian Standard Time)',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 14,
+              runSpacing: 10,
+              children: [
+                const _LiveClockBadge(),
+                ElevatedButton.icon(
+                  onPressed: () => _refreshAll(hospitalId),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Refresh Live Stats'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
             ),
           ],
-        ),
-        Row(
-          children: [
-            const _LiveClockBadge(),
-            const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: () => _refreshAll(hospitalId),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Refresh Live Stats'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1565C0),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 

@@ -82,74 +82,90 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     String hospitalId,
     AsyncValue<List<Map<String, dynamic>>> deptOverviewAsync,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxTitleWidth = constraints.maxWidth > 700 ? constraints.maxWidth - 340 : constraints.maxWidth;
+        return Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 12,
           children: [
-            Row(
-              children: [
-                const Text(
-                  'Patients Registry',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D47A1),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxTitleWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 6,
                     children: [
-                      const Icon(Icons.hub_outlined, size: 14, color: Color(0xFF1565C0)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'CROSS-PLATFORM (APP + HMS DESK)',
+                      const Text(
+                        'Patients Registry',
                         style: TextStyle(
-                          color: Colors.blue.shade800,
-                          fontSize: 11,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: Color(0xFF0D47A1),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.hub_outlined, size: 14, color: Color(0xFF1565C0)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'CROSS-PLATFORM (APP + HMS DESK)',
+                              style: TextStyle(
+                                color: Colors.blue.shade800,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Unified patient directory from CareSeva Mobile App and Hospital Walk-in Registrations sequenced by timestamp',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 14,
+              runSpacing: 10,
+              children: [
+                const _LiveClockBadge(),
+                ElevatedButton.icon(
+                  onPressed: () => _openRegisterPatientDialog(hospitalId, deptOverviewAsync),
+                  icon: const Icon(Icons.person_add_alt_1, size: 18),
+                  label: const Text('Register Patient'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 2,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Unified patient directory from CareSeva Mobile App and Hospital Walk-in Registrations sequenced by timestamp',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-            ),
           ],
-        ),
-        Row(
-          children: [
-            const _LiveClockBadge(),
-            const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: () => _openRegisterPatientDialog(hospitalId, deptOverviewAsync),
-              icon: const Icon(Icons.person_add_alt_1, size: 18),
-              label: const Text('Register Patient'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1565C0),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 2,
-              ),
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 

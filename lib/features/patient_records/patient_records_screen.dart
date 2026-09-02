@@ -79,80 +79,93 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
   }
 
   Widget _buildHeader(String hospitalId) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxTitleWidth = constraints.maxWidth > 700 ? constraints.maxWidth - 260 : constraints.maxWidth;
+        return Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 12,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.folder_shared_rounded, color: Color(0xFF1E3A8A), size: 30),
-                const SizedBox(width: 12),
-                const Text(
-                  'Patient Records & Master Directory',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxTitleWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 6,
                     children: [
-                      const Icon(Icons.verified_outlined, size: 14, color: Color(0xFF2563EB)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'LEGAL AUDIT REGISTER',
+                      const Icon(Icons.folder_shared_rounded, color: Color(0xFF1E3A8A), size: 30),
+                      const Text(
+                        'Patient Records & Master Directory',
                         style: TextStyle(
-                          color: Colors.blue.shade900,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.verified_outlined, size: 14, color: Color(0xFF2563EB)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'LEGAL AUDIT REGISTER',
+                              style: TextStyle(
+                                color: Colors.blue.shade900,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Permanent clinical & medico-legal audit register of all patients registered via CareSeva App and Direct Walk-in Desk.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Permanent clinical & medico-legal audit register of all patients registered via CareSeva App and Direct Walk-in Desk.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
+            ElevatedButton.icon(
+              onPressed: () {
+                ref.invalidate(hospitalPatientDirectoryProvider(hospitalId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Patient records refreshed.')),
+                );
+              },
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Refresh Directory'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF1E3A8A),
+                elevation: 0,
+                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ],
-        ),
-        ElevatedButton.icon(
-          onPressed: () {
-            ref.invalidate(hospitalPatientDirectoryProvider(hospitalId));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Patient records refreshed.')),
-            );
-          },
-          icon: const Icon(Icons.refresh, size: 18),
-          label: const Text('Refresh Directory'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF1E3A8A),
-            elevation: 0,
-            side: const BorderSide(color: Color(0xFFCBD5E1)),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
