@@ -184,14 +184,76 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
       );
       
+      final lat = position.latitude.toString();
+      final lng = position.longitude.toString();
+
       setState(() {
-        _latController.text = position.latitude.toString();
-        _lngController.text = position.longitude.toString();
+        _latController.text = lat;
+        _lngController.text = lng;
       });
-      
+
+      // Auto-fill City, State, Pincode & Address via Reverse Geocoding
+      String autoCity = '';
+      String autoState = '';
+      String autoPincode = '';
+      String autoAddress = '';
+
+      try {
+        final res = await http.get(
+          Uri.parse('${ApiConfig.httpBaseUrl}/api/hospitals/reverse-geocode?lat=$lat&lng=$lng'),
+        );
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          autoCity = data['city'] ?? '';
+          autoState = data['state'] ?? '';
+          autoPincode = data['pincode'] ?? '';
+          autoAddress = data['address'] ?? '';
+        }
+      } catch (_) {
+        // Direct client fallback to OpenStreetMap if backend reverse geocode is unreachable
+        try {
+          final clientRes = await http.get(
+            Uri.parse('https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1'),
+            headers: {'User-Agent': 'CareSeva-Hospital-Registry/1.0'},
+          );
+          if (clientRes.statusCode == 200) {
+            final data = jsonDecode(clientRes.body);
+            final addr = data['address'] ?? {};
+            autoCity = addr['city'] ?? addr['town'] ?? addr['municipality'] ?? addr['suburb'] ?? addr['state_district'] ?? '';
+            autoState = addr['state'] ?? '';
+            autoPincode = addr['postcode'] ?? '';
+            autoAddress = addr['road'] ?? addr['suburb'] ?? '';
+          }
+        } catch (_) {}
+      }
+
       if (mounted) {
+        setState(() {
+          if (autoCity.isNotEmpty) _cityController.text = autoCity;
+          if (autoState.isNotEmpty) _stateController.text = autoState;
+          if (autoPincode.isNotEmpty) _pincodeController.text = autoPincode;
+          if (autoAddress.isNotEmpty && _addressController.text.trim().isEmpty) {
+            _addressController.text = autoAddress;
+          }
+        });
+
+        String info = 'Location coordinates fetched!';
+        if (autoCity.isNotEmpty || autoState.isNotEmpty || autoPincode.isNotEmpty) {
+          info = 'Location fetched! Auto-filled $autoCity, $autoState ${autoPincode.isNotEmpty ? '($autoPincode)' : ''}';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location fetched successfully!')),
+          SnackBar(
+            backgroundColor: const Color(0xFF1565C0),
+            behavior: SnackBarBehavior.floating,
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(info, style: const TextStyle(fontWeight: FontWeight.bold))),
+              ],
+            ),
+          ),
         );
       }
     } catch (e) {
