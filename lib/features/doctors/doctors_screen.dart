@@ -332,8 +332,38 @@ class DoctorsScreen extends ConsumerWidget {
                             ),
                           );
                           if (confirm == true) {
-                            final hospitalId = ref.read(authProvider).hospitalId!;
-                            await ref.read(doctorActionsProvider).deleteDoctor(hospitalId, doc['id']);
+                            final hospitalId = ref.read(authProvider).hospitalId;
+                            if (hospitalId == null) return;
+                            final docId = (doc['id'] ?? doc['_id'] ?? doc['doc_id'])?.toString();
+                            if (docId == null) return;
+
+                            final success = await ref.read(doctorActionsProvider).deleteDoctor(hospitalId, docId);
+                            ref.invalidate(doctorsProvider);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: success ? Colors.green.shade700 : Colors.red.shade700,
+                                  behavior: SnackBarBehavior.floating,
+                                  content: Row(
+                                    children: [
+                                      Icon(
+                                        success ? Icons.check_circle : Icons.error_outline,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          success
+                                              ? '${doc['name']} has been removed successfully.'
+                                              : 'Failed to remove doctor. Please try again.',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
                           }
                         },
                       );

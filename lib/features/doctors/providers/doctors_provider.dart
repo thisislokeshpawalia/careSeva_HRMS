@@ -69,7 +69,7 @@ class DoctorActions {
       final response = await http.delete(
         Uri.parse('${ApiConfig.httpBaseUrl}/api/management/$hospitalId/doctors/$docId'),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         ref.invalidate(doctorsProvider);
         return true;
       }
