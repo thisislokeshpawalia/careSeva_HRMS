@@ -25,6 +25,15 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
   final _passwordController = TextEditingController();
   final _latController = TextEditingController();
   final _lngController = TextEditingController();
+  final _legalEntityController = TextEditingController();
+  final _ceaNumberController = TextEditingController();
+  final _gstinController = TextEditingController();
+  final _panController = TextEditingController();
+  final _msNameController = TextEditingController();
+  final _msRegController = TextEditingController();
+  final _bedsController = TextEditingController();
+  String _nabhAccreditation = 'NONE';
+  bool _slaAccepted = true;
   bool _isLoading = false;
   bool _fetchingLocation = false;
 
@@ -41,11 +50,24 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
     _passwordController.dispose();
     _latController.dispose();
     _lngController.dispose();
+    _legalEntityController.dispose();
+    _ceaNumberController.dispose();
+    _gstinController.dispose();
+    _panController.dispose();
+    _msNameController.dispose();
+    _msRegController.dispose();
+    _bedsController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
+      if (!_slaAccepted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You must accept the CareSeva Digital Master Service Agreement to register.')),
+        );
+        return;
+      }
       setState(() => _isLoading = true);
       
       final payload = {
@@ -60,6 +82,15 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
         "pincode": _pincodeController.text,
         "latitude": double.tryParse(_latController.text),
         "longitude": double.tryParse(_lngController.text),
+        "legal_entity_name": _legalEntityController.text.isEmpty ? _nameController.text : _legalEntityController.text,
+        "clinical_establishment_no": _ceaNumberController.text,
+        "gstin": _gstinController.text,
+        "pan_number": _panController.text,
+        "nabh_accreditation": _nabhAccreditation,
+        "medical_superintendent_name": _msNameController.text,
+        "medical_superintendent_reg_no": _msRegController.text,
+        "total_beds": int.tryParse(_bedsController.text) ?? 0,
+        "sla_accepted": _slaAccepted,
         "specialties": [],
         "password": _passwordController.text
       };
@@ -316,7 +347,117 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
                           : const Icon(Icons.my_location),
                         label: Text(_fetchingLocation ? 'Fetching...' : 'Fetch Current Location'),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.shield_outlined, color: Color(0xFF1565C0), size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Statutory & Legal Em-panelment Credentials',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blue.shade900),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Required under the Clinical Establishments Act and CareSeva Aggregator Compliance.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _ceaNumberController,
+                        decoration: const InputDecoration(
+                          labelText: 'Clinical Establishment Act (CEA) Reg #',
+                          prefixIcon: Icon(Icons.verified_user_outlined),
+                          hintText: 'e.g. CEA/UP/2026/0412',
+                        ),
+                        validator: (v) => v!.isEmpty ? 'CEA Registration # is required by law' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _legalEntityController,
+                        decoration: const InputDecoration(
+                          labelText: 'Registered Legal Entity Name',
+                          prefixIcon: Icon(Icons.apartment_outlined),
+                          hintText: 'e.g. Apollo Healthcare Ltd or Trust Name',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _gstinController,
+                              decoration: const InputDecoration(labelText: 'Hospital GSTIN', prefixIcon: Icon(Icons.receipt_long)),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _panController,
+                              decoration: const InputDecoration(labelText: 'Hospital PAN', prefixIcon: Icon(Icons.badge_outlined)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _msNameController,
+                              decoration: const InputDecoration(labelText: 'Medical Superintendent / CMO', prefixIcon: Icon(Icons.medical_services_outlined)),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _msRegController,
+                              decoration: const InputDecoration(labelText: 'State Medical Council / NMC Reg #'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _bedsController,
+                              decoration: const InputDecoration(labelText: 'Total Monitored Beds', prefixIcon: Icon(Icons.hotel_outlined)),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _nabhAccreditation,
+                              decoration: const InputDecoration(labelText: 'NABH Accreditation'),
+                              items: const [
+                                DropdownMenuItem(value: 'NONE', child: Text('None / Non-Accredited')),
+                                DropdownMenuItem(value: 'ENTRY_LEVEL', child: Text('NABH Entry Level')),
+                                DropdownMenuItem(value: 'FULL_NABH', child: Text('Full NABH Certified')),
+                                DropdownMenuItem(value: 'NABL', child: Text('NABL (Diagnostics)')),
+                              ],
+                              onChanged: (val) => setState(() => _nabhAccreditation = val ?? 'NONE'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      CheckboxListTile(
+                        value: _slaAccepted,
+                        onChanged: (val) => setState(() => _slaAccepted = val ?? false),
+                        title: const Text(
+                          'I declare that all submitted clinical details are true and accept the CareSeva Digital Master Service Agreement & Statutory Healthcare Indemnity Terms.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      const SizedBox(height: 24),
                       _isLoading 
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton(
