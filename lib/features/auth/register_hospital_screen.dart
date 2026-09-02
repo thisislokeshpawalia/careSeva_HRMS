@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -454,14 +455,70 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: _gstinController,
-                              decoration: const InputDecoration(labelText: 'Hospital GSTIN', prefixIcon: Icon(Icons.receipt_long)),
+                              textCapitalization: TextCapitalization.characters,
+                              maxLength: 15,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                                LengthLimitingTextInputFormatter(15),
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Hospital GSTIN (15 Digits)',
+                                prefixIcon: Icon(Icons.receipt_long),
+                                hintText: '09ABCDE1234F1Z5',
+                                counterText: '',
+                              ),
+                              validator: (v) {
+                                if (v != null && v.trim().isNotEmpty) {
+                                  final clean = v.trim().toUpperCase();
+                                  if (clean.length != 15) {
+                                    return 'GSTIN must be exactly 15 characters';
+                                  }
+                                  if (!RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$').hasMatch(clean)) {
+                                    return 'Invalid GST format (e.g. 09ABCDE1234F1Z5)';
+                                  }
+                                }
+                                return null;
+                              },
+                              onChanged: (val) {
+                                if (val.trim().length == 15 && _panController.text.trim().isEmpty) {
+                                  final extractedPan = val.trim().substring(2, 12).toUpperCase();
+                                  if (RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$').hasMatch(extractedPan)) {
+                                    setState(() {
+                                      _panController.text = extractedPan;
+                                    });
+                                  }
+                                }
+                              },
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: TextFormField(
                               controller: _panController,
-                              decoration: const InputDecoration(labelText: 'Hospital PAN', prefixIcon: Icon(Icons.badge_outlined)),
+                              textCapitalization: TextCapitalization.characters,
+                              maxLength: 10,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Hospital PAN (10 Chars)',
+                                prefixIcon: Icon(Icons.badge_outlined),
+                                hintText: 'ABCDE1234F',
+                                counterText: '',
+                              ),
+                              validator: (v) {
+                                if (v != null && v.trim().isNotEmpty) {
+                                  final clean = v.trim().toUpperCase();
+                                  if (clean.length != 10) {
+                                    return 'PAN must be exactly 10 characters';
+                                  }
+                                  if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$').hasMatch(clean)) {
+                                    return 'Invalid PAN (e.g. ABCDE1234F)';
+                                  }
+                                }
+                                return null;
+                              },
                             ),
                           ),
                         ],
@@ -474,7 +531,31 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _msRegController,
-                        decoration: const InputDecoration(labelText: 'State Medical Council / NMC Reg #', prefixIcon: Icon(Icons.verified_outlined), hintText: 'e.g. MCI-2018-0921'),
+                        textCapitalization: TextCapitalization.characters,
+                        maxLength: 25,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\/-]')),
+                          LengthLimitingTextInputFormatter(25),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'State Medical Council / NMC Reg #',
+                          prefixIcon: Icon(Icons.verified_outlined),
+                          hintText: 'e.g. NMC-2018-0921 or MCI-45123',
+                          counterText: '',
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'State Medical Council / NMC Reg # is required by law';
+                          }
+                          final clean = v.trim().toUpperCase();
+                          if (clean.length < 3) {
+                            return 'Registration # is too short';
+                          }
+                          if (!RegExp(r'^[A-Z0-9\/-]{3,25}$').hasMatch(clean)) {
+                            return 'Invalid format (e.g. NMC-2018-0921 or MCI-45123)';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
