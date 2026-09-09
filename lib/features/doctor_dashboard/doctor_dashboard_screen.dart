@@ -12,8 +12,20 @@ class Patient {
   final String name;
   final String time;
   final String reason;
+  final String? patientId;
+  final String? appointmentId;
+  final int tokenNumber;
+  final Map<String, dynamic>? prescription;
 
-  Patient(this.name, this.time, this.reason);
+  Patient(
+    this.name, 
+    this.time, 
+    this.reason, {
+    this.patientId, 
+    this.appointmentId, 
+    this.tokenNumber = 0,
+    this.prescription,
+  });
 }
 
 class DoctorDashboardScreen extends ConsumerStatefulWidget {
@@ -159,22 +171,45 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             _currentPatient = null;
             
             for (var entry in entriesData) {
-              int token = entry['token_number'];
+              int token = entry['token_number'] ?? 0;
               String name = entry['patient_name'] ?? 'Unknown';
               String state = entry['status'] ?? 'WAITING';
+              String? apptId = entry['appointment_id'];
+              String? pid = entry['patient_id'];
               
-              if (token == _currentToken && state == 'CALLED') {
-                _currentPatient = Patient('$name (Token #$token)', 'Now', 'Consultation');
+              if (token == _currentToken && (state == 'CALLED' || state == 'IN_PROGRESS' || state == 'WAITING')) {
+                _currentPatient = Patient(
+                  '$name (Token #$token)', 
+                  'Now', 
+                  'Consultation',
+                  patientId: pid,
+                  appointmentId: apptId,
+                  tokenNumber: token,
+                );
               } else if (state == 'WAITING' || (token > _currentToken && state != 'COMPLETED')) {
-                _queue.add(Patient('$name (Token #$token)', 'Waiting', 'Consultation'));
+                _queue.add(Patient(
+                  '$name (Token #$token)', 
+                  'Waiting', 
+                  'Consultation',
+                  patientId: pid,
+                  appointmentId: apptId,
+                  tokenNumber: token,
+                ));
               } else if (state == 'COMPLETED') {
-                _completedQueue.add(Patient('$name (Token #$token)', 'Completed', 'Consultation'));
+                _completedQueue.add(Patient(
+                  '$name (Token #$token)', 
+                  'Completed', 
+                  'Consultation',
+                  patientId: pid,
+                  appointmentId: apptId,
+                  tokenNumber: token,
+                ));
               }
             }
           });
         }
       } catch (e) {
-        // print(e);
+        // fail silently
       }
     }
   }
@@ -199,25 +234,311 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
           _fetchQueueStatus();
         }
       } catch (e) {
-        // print(e);
+        // fail silently
       }
     }
   }
 
-  Future<void> _completeCurrent() async {
+  Future<void> _completeCurrent({Map<String, dynamic>? consultationData}) async {
     if (_currentPatient != null) {
       final authState = ref.read(authProvider);
       final doctorId = authState.doctorId;
       
       try {
-        final response = await http.post(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/complete'));
+        final uri = Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/complete');
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(consultationData != null ? {'consultation': consultationData} : {}),
+        );
         if (response.statusCode == 200) {
           _fetchQueueStatus();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      consultationData != null 
+                          ? 'Consultation & Digital Prescription saved for ${_currentPatient?.name ?? 'patient'}!'
+                          : 'Patient consultation marked completed.',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF10B981),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
       } catch (e) {
-        // print(e);
+        // fail silently
       }
     }
+  }
+
+  void _showConsultationDialog() {
+    if (_currentPatient == null) return;
+
+    final diagCtrl = TextEditingController();
+    final notesCtrl = TextEditingController();
+    final followUpCtrl = TextEditingController(text: '7 days');
+
+    final List<Map<String, TextEditingController>> medicines = [
+      {
+        'name': TextEditingController(text: 'Paracetamol 650mg'),
+        'dosage': TextEditingController(text: '1-0-1'),
+        'timing': TextEditingController(text: 'After Food'),
+        'duration': TextEditingController(text: '3 days'),
+      }
+    ];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withAlpha(25),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.medication_liquid_rounded, color: Color(0xFF1565C0)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Complete Consultation & Issue Prescription',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          _currentPatient?.name ?? 'Patient',
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.normal),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 650,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Diagnosis / Symptoms',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: diagCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Viral Fever / Acute Bronchitis / Hypertension',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Prescribed Medicines',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          TextButton.icon(
+                            onPressed: () {
+                              setDialogState(() {
+                                medicines.add({
+                                  'name': TextEditingController(),
+                                  'dosage': TextEditingController(text: '1-0-1'),
+                                  'timing': TextEditingController(text: 'After Food'),
+                                  'duration': TextEditingController(text: '5 days'),
+                                });
+                              });
+                            },
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Add Medicine'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ...medicines.asMap().entries.map((entry) {
+                        int idx = entry.key;
+                        var med = entry.value;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: TextField(
+                                  controller: med['name'],
+                                  decoration: InputDecoration(
+                                    labelText: 'Medicine ${idx + 1}',
+                                    hintText: 'e.g. Amoxicillin 500mg',
+                                    isDense: true,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 2,
+                                child: TextField(
+                                  controller: med['dosage'],
+                                  decoration: InputDecoration(
+                                    labelText: 'Dosage',
+                                    hintText: '1-0-1',
+                                    isDense: true,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 2,
+                                child: TextField(
+                                  controller: med['duration'],
+                                  decoration: InputDecoration(
+                                    labelText: 'Duration',
+                                    hintText: '5 days',
+                                    isDense: true,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                ),
+                              ),
+                              if (medicines.length > 1)
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      medicines.removeAt(idx);
+                                    });
+                                  },
+                                ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Doctor Advice / Instructions',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: notesCtrl,
+                                  maxLines: 2,
+                                  decoration: InputDecoration(
+                                    hintText: 'e.g. Drink warm fluids, avoid oily foods, get plenty of rest.',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Follow-up Review',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: followUpCtrl,
+                                  decoration: InputDecoration(
+                                    hintText: 'e.g. In 7 days',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogCtx);
+                    _completeCurrent();
+                  },
+                  child: const Text('Quick Complete (No Rx)', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final medsPayload = medicines
+                        .where((m) => m['name']!.text.trim().isNotEmpty)
+                        .map((m) => {
+                              'name': m['name']!.text.trim(),
+                              'dosage': m['dosage']!.text.trim(),
+                              'timing': m['timing']!.text.trim(),
+                              'duration': m['duration']!.text.trim(),
+                            })
+                        .toList();
+
+                    final consultationData = {
+                      'diagnosis': diagCtrl.text.trim().isNotEmpty ? diagCtrl.text.trim() : 'General Consultation',
+                      'medicines': medsPayload,
+                      'notes': notesCtrl.text.trim(),
+                      'follow_up_date': followUpCtrl.text.trim(),
+                    };
+
+                    Navigator.pop(dialogCtx);
+                    _completeCurrent(consultationData: consultationData);
+                  },
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Save Prescription & Complete'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -227,7 +548,11 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
         const SingleActivator(LogicalKeyboardKey.enter): _callNext,
         const SingleActivator(LogicalKeyboardKey.numpadEnter): _callNext,
         const SingleActivator(LogicalKeyboardKey.arrowRight): _callNext,
-        const SingleActivator(LogicalKeyboardKey.arrowDown): _completeCurrent,
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+          if (_currentPatient != null) {
+            _showConsultationDialog();
+          }
+        },
       },
       child: Focus(
         autofocus: true,
@@ -413,35 +738,51 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     return Row(
       children: [
         Expanded(
+          flex: 3,
           child: ElevatedButton.icon(
             onPressed: hasMore ? _callNext : null,
             icon: const Icon(Icons.person_add_alt_1),
             label: const Text('Call Next Patient [Enter / →]'),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.symmetric(vertical: 18),
               backgroundColor: Colors.green.shade600,
               foregroundColor: Colors.white,
-              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _currentPatient != null ? _completeCurrent : null,
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Complete Current [↓]'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              foregroundColor: Colors.blue.shade800,
-              side: BorderSide(color: Colors.blue.shade800),
-              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          flex: 3,
+          child: ElevatedButton.icon(
+            onPressed: _currentPatient != null ? _showConsultationDialog : null,
+            icon: const Icon(Icons.medication_outlined),
+            label: const Text('Prescribe & Complete [↓]'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              backgroundColor: const Color(0xFF1565C0),
+              foregroundColor: Colors.white,
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        IconButton.filledTonal(
+          onPressed: _currentPatient != null ? _completeCurrent : null,
+          tooltip: 'Quick Complete (Skip Rx)',
+          icon: const Icon(Icons.check_circle_outline),
+          style: IconButton.styleFrom(
+            padding: const EdgeInsets.all(16),
+            backgroundColor: Colors.blue.shade50,
+            foregroundColor: Colors.blue.shade900,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
         ),

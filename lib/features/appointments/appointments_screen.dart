@@ -1205,6 +1205,12 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              if (appt['prescription'] != null)
+                                IconButton(
+                                  icon: const Icon(Icons.receipt_long_rounded, color: Color(0xFF1565C0)),
+                                  onPressed: () => _showPrescriptionDialog(context, appt),
+                                  tooltip: 'View Prescription & Notes',
+                                ),
                               if (status != 'COMPLETED')
                                 IconButton(
                                   icon: const Icon(Icons.check_circle_outline, color: Colors.green),
@@ -1214,7 +1220,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                   },
                                   tooltip: 'Mark Completed',
                                 ),
-                              if (status != 'CANCELLED')
+                              if (status != 'CANCELLED' && status != 'COMPLETED')
                                 IconButton(
                                   icon: const Icon(Icons.cancel_outlined, color: Colors.red),
                                   onPressed: () async {
@@ -1259,6 +1265,128 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
       default:
         return Colors.grey.shade700;
     }
+  }
+
+  void _showPrescriptionDialog(BuildContext context, Map<String, dynamic> appt) {
+    final rx = (appt['prescription'] as Map<String, dynamic>?) ?? {};
+    final diagnosis = rx['diagnosis'] ?? 'General Consultation';
+    final notes = rx['notes'] ?? 'Follow general prescription guidelines.';
+    final followUp = rx['follow_up_date'] ?? 'As needed';
+    final List<dynamic> medicines = rx['medicines'] ?? [];
+    final doctorName = appt['doctor_name'] ?? rx['doctor_name'] ?? 'Doctor';
+    final patientName = appt['patient_name'] ?? 'Patient';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1565C0).withAlpha(20),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF1565C0)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Clinical Prescription & Notes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('Patient: $patientName • Doctor: $doctorName', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 550,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('DIAGNOSIS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0D47A1))),
+                        const SizedBox(height: 4),
+                        Text(diagnosis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Medications', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  if (medicines.isEmpty)
+                    const Text('No medications listed.', style: TextStyle(color: Colors.grey))
+                  else
+                    ...medicines.map((m) {
+                      final med = m is Map<String, dynamic> ? m : <String, dynamic>{};
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(med['name'] ?? 'Medicine', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('${med['dosage'] ?? '1-0-1'} • ${med['timing'] ?? 'After Food'} • ${med['duration'] ?? '5 days'}',
+                                style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  const SizedBox(height: 14),
+                  const Text('Doctor Instructions & Advice', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade200),
+                    ),
+                    child: Text(notes, style: TextStyle(color: Colors.amber.shade950, fontSize: 12)),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.event_repeat, size: 16, color: Color(0xFF1565C0)),
+                      const SizedBox(width: 6),
+                      Text('Follow-up: $followUp', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1565C0))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
