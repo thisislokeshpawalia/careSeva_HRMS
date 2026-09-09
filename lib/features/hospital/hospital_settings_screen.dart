@@ -104,6 +104,9 @@ class _GeneralSettingsFormState extends ConsumerState<_GeneralSettingsForm> {
     _pincodeCtrl.dispose();
     super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) {
     return Form(
       key: _formKey,
       child: Column(
