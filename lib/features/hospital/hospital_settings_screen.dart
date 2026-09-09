@@ -78,7 +78,6 @@ class _GeneralSettingsFormState extends ConsumerState<_GeneralSettingsForm> {
   late TextEditingController _stateCtrl;
   late TextEditingController _addressCtrl;
   late TextEditingController _pincodeCtrl;
-  bool _isSaving = false;
 
   @override
   void initState() {
@@ -105,31 +104,6 @@ class _GeneralSettingsFormState extends ConsumerState<_GeneralSettingsForm> {
     _pincodeCtrl.dispose();
     super.dispose();
   }
-
-  Future<void> _saveChanges() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
-    final data = {
-      'name': _nameCtrl.text,
-      'contact_person': _contactCtrl.text,
-      'email': _emailCtrl.text,
-      'phone': _phoneCtrl.text,
-      'city': _cityCtrl.text,
-      'state': _stateCtrl.text,
-      'address': _addressCtrl.text,
-      'pincode': _pincodeCtrl.text,
-    };
-    final success = await ref.read(hospitalActionsProvider).updateHospitalDetails(widget.details['id'], data);
-    setState(() => _isSaving = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(success ? 'Settings saved successfully' : 'Failed to save settings')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Form(
       key: _formKey,
       child: Column(

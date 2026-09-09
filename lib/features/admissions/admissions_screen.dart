@@ -1494,7 +1494,7 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDlgState) => AlertDialog(
+        builder: (dialogCtx, setDlgState) => AlertDialog(
           title: const Text('Update Admission Status'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1527,17 +1527,17 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => Navigator.pop(dialogCtx),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.pop(ctx);
+                Navigator.pop(dialogCtx);
                 final success = await updateAdmissionStatusApi(admissionId, {'status': newStatus});
                 if (!mounted) return;
                 if (success) {
                   _refreshAll(hospitalId);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     SnackBar(content: Text('Admission status updated to $newStatus')),
                   );
                 }

@@ -1352,7 +1352,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   const SizedBox(height: 14),
                   const Text('Doctor Instructions & Advice', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 4),
@@ -1364,7 +1364,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.amber.shade200),
                     ),
-                    child: Text(notes, style: TextStyle(color: Colors.amber.shade950, fontSize: 12)),
+                    child: Text(notes, style: TextStyle(color: Colors.amber.shade900, fontSize: 12)),
                   ),
                   const SizedBox(height: 12),
                   Row(
