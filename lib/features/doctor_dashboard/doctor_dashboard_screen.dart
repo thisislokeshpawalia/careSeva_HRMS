@@ -859,7 +859,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                   leading: CircleAvatar(
                     backgroundColor: Colors.blue.shade50,
                     child: Text(
-                      '${_currentToken + index + 1}',
+                      '${patient.tokenNumber}',
                       style: TextStyle(
                         color: Colors.blue.shade800,
                         fontWeight: FontWeight.bold,
