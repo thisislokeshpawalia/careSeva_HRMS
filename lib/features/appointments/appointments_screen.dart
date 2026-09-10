@@ -792,6 +792,21 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   });
                 },
               ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _searchQuery = '';
+                    _statusFilter = 'All';
+                    _selectedDateFilterMode = 'All';
+                    _customSelectedDate = null;
+                    _selectedDepartmentId = null;
+                    _selectedDepartmentName = null;
+                  });
+                },
+                icon: const Icon(Icons.clear_all, size: 18, color: Colors.red),
+                label: const Text('Clear Filters', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
         ],

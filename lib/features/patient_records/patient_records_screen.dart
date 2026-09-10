@@ -317,6 +317,20 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
             labels: const {'All': 'All Records', 'SETTLED': 'Fully Settled', 'DUE': 'Balance Due'},
             onChanged: (val) => setState(() => _selectedPaymentStatus = val!),
           ),
+          const SizedBox(width: 14),
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _searchQuery = '';
+                _selectedSource = 'All';
+                _selectedBloodGroup = 'All';
+                _selectedDept = 'All';
+                _selectedPaymentStatus = 'All';
+              });
+            },
+            icon: const Icon(Icons.clear_all, size: 18, color: Colors.red),
+            label: const Text('Clear', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );

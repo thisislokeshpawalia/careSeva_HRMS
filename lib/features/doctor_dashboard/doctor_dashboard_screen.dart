@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import '../auth/providers/auth_provider.dart';
 import '../../../core/api_config.dart';
 
@@ -47,6 +48,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   Timer? _heartbeatTimer;
   Timer? _reconnectTimer;
   Timer? _pollingTimer;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
@@ -155,8 +157,9 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
     
     if (doctorId != null) {
       try {
-        final statusRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/status'));
-        final entriesRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/entries'));
+        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+        final statusRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/status?date=$dateStr'));
+        final entriesRes = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/entries?date=$dateStr'));
         
         if (statusRes.statusCode == 200 && entriesRes.statusCode == 200 && mounted) {
           final statusData = jsonDecode(statusRes.body);
@@ -229,7 +232,8 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
       final doctorId = authState.doctorId;
       
       try {
-        final response = await http.post(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/next'));
+        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+        final response = await http.post(Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/next?date=$dateStr'));
         if (response.statusCode == 200) {
           _fetchQueueStatus();
         }
@@ -245,7 +249,8 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
       final doctorId = authState.doctorId;
       
       try {
-        final uri = Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/complete');
+        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+        final uri = Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/$doctorId/complete?date=$dateStr');
         final response = await http.post(
           uri,
           headers: {'Content-Type': 'application/json'},
@@ -566,13 +571,41 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Doctor Overview & Queue',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D47A1),
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Doctor Overview & Queue',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    ActionChip(
+                      avatar: const Icon(Icons.calendar_month, size: 16, color: Color(0xFF1565C0)),
+                      label: Text(
+                        DateFormat('dd MMM yyyy').format(_selectedDate),
+                        style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold),
+                      ),
+                      backgroundColor: const Color(0xFF1565C0).withAlpha(25),
+                      side: const BorderSide(color: Color(0xFF1565C0)),
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _selectedDate = picked;
+                          });
+                          _fetchQueueStatus();
+                        }
+                      },
+                    ),
+                  ],
                 ),
                 InkWell(
                   onTap: () {
