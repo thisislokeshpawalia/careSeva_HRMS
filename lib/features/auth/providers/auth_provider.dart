@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/api_config.dart';
+import '../../../core/services/safe_http_client.dart';
 
 enum UserRole { admin, doctor, none }
 
@@ -67,7 +68,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<bool> login(String email, String password, UserRole role) async {
     try {
-      final response = await http.post(
+      final response = await SafeHttpClient.post(
         Uri.parse('${ApiConfig.httpBaseUrl}/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
@@ -97,14 +98,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       }
     } catch (e) {
-      state = state.copyWith(errorMessage: 'Network connection error. Please try again.');
+      state = state.copyWith(errorMessage: SafeHttpClient.formatErrorMessage(e));
       return false;
     }
   }
 
   Future<bool> doctorLogin(String hopId, String docId) async {
     try {
-      final response = await http.post(
+      final response = await SafeHttpClient.post(
         Uri.parse('${ApiConfig.httpBaseUrl}/api/auth/doctor-login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'hop_id': hopId, 'doc_id': docId}),
@@ -132,7 +133,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       }
     } catch (e) {
-      state = state.copyWith(errorMessage: 'Network error during doctor login.');
+      state = state.copyWith(errorMessage: SafeHttpClient.formatErrorMessage(e));
       return false;
     }
   }
@@ -141,7 +142,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final hid = state.hospitalId ?? state.hopId;
     if (hid == null) return null;
     try {
-      final res = await http.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/auth/hospital-status/$hid'));
+      final res = await SafeHttpClient.get(Uri.parse('${ApiConfig.httpBaseUrl}/api/auth/hospital-status/$hid'));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final vStatus = (data['verification_status'] ?? 'PENDING').toString().toUpperCase();
