@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/api_config.dart';
+import '../../../core/services/safe_http_client.dart';
 import '../../auth/providers/auth_provider.dart';
 
 final dashboardStatsProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
@@ -27,7 +27,7 @@ final dashboardStatsProvider = FutureProvider.autoDispose<Map<String, dynamic>?>
   }
 
   try {
-    final response = await http.get(
+    final response = await SafeHttpClient.get(
       Uri.parse('${ApiConfig.httpBaseUrl}/api/management/$hospitalId/dashboard-stats'),
     );
     
