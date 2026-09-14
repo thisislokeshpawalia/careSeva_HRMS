@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/api_config.dart';
 import '../../../core/services/safe_http_client.dart';
