@@ -61,6 +61,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
   Timer? _reconnectTimer;
   Timer? _pollingTimer;
   DateTime _selectedDate = DateTime.now();
+  String _selectedSlotFilter = 'All Slots';
 
   @override
   void initState() {
@@ -958,38 +959,90 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                const Text(
-                  'Upcoming Queue',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D47A1),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1565C0).withAlpha(25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${_totalTokens - _currentToken} waiting',
-                    style: const TextStyle(
-                      color: Color(0xFF1565C0),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Upcoming Queue',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D47A1),
+                      ),
                     ),
-                  ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1565C0).withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_totalTokens - _currentToken} waiting',
+                        style: const TextStyle(
+                          color: Color(0xFF1565C0),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                if (_queue.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.filter_list_rounded, size: 14, color: Color(0xFF1565C0)),
+                      const SizedBox(width: 6),
+                      const Text('Slot Filter: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              'All Slots',
+                              ..._queue
+                                  .map((p) => p.timeSlot)
+                                  .where((s) => s != null && s.isNotEmpty)
+                                  .toSet()
+                                  .cast<String>()
+                            ].map((slotName) {
+                              final isSel = _selectedSlotFilter == slotName;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6.0),
+                                child: ChoiceChip(
+                                  label: Text(slotName),
+                                  selected: isSel,
+                                  selectedColor: const Color(0xFF1565C0),
+                                  labelStyle: TextStyle(
+                                    color: isSel ? Colors.white : const Color(0xFF1565C0),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setState(() {
+                                        _selectedSlotFilter = slotName;
+                                      });
+                                    }
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -1007,10 +1060,15 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _queue.length,
+              itemCount: (_selectedSlotFilter == 'All Slots'
+                  ? _queue
+                  : _queue.where((p) => p.timeSlot == _selectedSlotFilter).toList()).length,
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final patient = _queue[index];
+                final filteredQ = _selectedSlotFilter == 'All Slots'
+                    ? _queue
+                    : _queue.where((p) => p.timeSlot == _selectedSlotFilter).toList();
+                final patient = filteredQ[index];
                 final isApp = (patient.bookingSource ?? '').toUpperCase().contains('CARESEVA') || (patient.bookingSource ?? '').toUpperCase().contains('APP');
                 final slot = (patient.timeSlot != null && patient.timeSlot!.isNotEmpty) ? patient.timeSlot! : 'Regular OPD';
 

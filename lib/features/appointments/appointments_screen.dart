@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import '../auth/providers/auth_provider.dart';
 import '../../core/providers/appointment_provider.dart';
+import '../../core/api_config.dart';
 
 class AppointmentsScreen extends ConsumerStatefulWidget {
   const AppointmentsScreen({super.key});
@@ -913,11 +915,13 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
               final bookingFor = (a['booking_for'] ?? '').toString().toLowerCase();
               final dept = (a['department_name'] ?? '').toString().toLowerCase();
               final src = (a['booking_source'] ?? '').toString().toLowerCase();
+              final slot = (a['time_slot'] ?? '').toString().toLowerCase();
               return name.contains(_searchQuery) ||
                   phone.contains(_searchQuery) ||
                   bookingFor.contains(_searchQuery) ||
                   dept.contains(_searchQuery) ||
-                  src.contains(_searchQuery);
+                  src.contains(_searchQuery) ||
+                  slot.contains(_searchQuery);
             }).toList();
           }
 
@@ -1236,6 +1240,28 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              if (status != 'COMPLETED' && status != 'CANCELLED' && (appt['check_in_status'] ?? '').toString().toUpperCase() != 'CHECKED_IN')
+                                IconButton(
+                                  icon: const Icon(Icons.pin_drop_rounded, color: Color(0xFF10B981)),
+                                  onPressed: () async {
+                                    try {
+                                      final uri = Uri.parse('${ApiConfig.httpBaseUrl}/api/queue/appointment/$apptId/check-in');
+                                      final res = await http.post(uri, headers: {'Content-Type': 'application/json'});
+                                      if (res.statusCode == 200) {
+                                        _refreshAll(hospitalId);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Patient $name checked in at counter successfully!'),
+                                              backgroundColor: const Color(0xFF10B981),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    } catch (_) {}
+                                  },
+                                  tooltip: 'Check-In Patient Arrival',
+                                ),
                               if (appt['prescription'] != null)
                                 IconButton(
                                   icon: const Icon(Icons.receipt_long_rounded, color: Color(0xFF1565C0)),
