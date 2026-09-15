@@ -998,7 +998,6 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     final apptId = appt['id'] ?? '';
                     final rawDate = appt['appointment_date'] ?? '';
                     final formattedDate = _formatRowDate(rawDate);
-                    final bookingTime = _formatBookingTime(appt['created_at']);
                     final name = appt['patient_name'] ?? 'Unknown';
                     final deptName = (appt['department_name'] != null && appt['department_name'].toString().isNotEmpty)
                         ? appt['department_name']
@@ -1038,17 +1037,34 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                   ),
                                 ],
                               ),
-                              if (bookingTime.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Booked at $bookingTime',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
+                              const SizedBox(height: 3),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.schedule, size: 12, color: Colors.blue.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    (appt['time_slot'] != null && appt['time_slot'].toString().isNotEmpty)
+                                        ? appt['time_slot'].toString()
+                                        : 'Regular OPD',
+                                    style: TextStyle(
+                                      color: Colors.blue.shade900,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  if (_formatBookingTime(appt['created_at']).isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '(${_formatBookingTime(appt['created_at'])})',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ],
                           ),
                         ),

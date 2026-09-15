@@ -17,6 +17,11 @@ class Patient {
   final String? appointmentId;
   final int tokenNumber;
   final Map<String, dynamic>? prescription;
+  final String? timeSlot;
+  final String? bookingSource;
+  final String? patientPhone;
+  final int? patientAge;
+  final String? patientGender;
 
   Patient(
     this.name, 
@@ -26,6 +31,11 @@ class Patient {
     this.appointmentId, 
     this.tokenNumber = 0,
     this.prescription,
+    this.timeSlot,
+    this.bookingSource,
+    this.patientPhone,
+    this.patientAge,
+    this.patientGender,
   });
 }
 
@@ -179,34 +189,32 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
               String state = entry['status'] ?? 'WAITING';
               String? apptId = entry['appointment_id'];
               String? pid = entry['patient_id'];
+              String? slot = entry['time_slot'] ?? entry['appointment_time'];
+              String? src = entry['booking_source'];
+              String? phone = entry['patient_phone'];
+              int? age = entry['patient_age'] is int ? entry['patient_age'] : int.tryParse(entry['patient_age']?.toString() ?? '');
+              String? gender = entry['patient_gender'];
               
+              final pObj = Patient(
+                name, 
+                'Token #$token', 
+                'Consultation',
+                patientId: pid,
+                appointmentId: apptId,
+                tokenNumber: token,
+                timeSlot: slot,
+                bookingSource: src,
+                patientPhone: phone,
+                patientAge: age,
+                patientGender: gender,
+              );
+
               if (token == _currentToken && (state == 'CALLED' || state == 'IN_PROGRESS' || state == 'WAITING')) {
-                _currentPatient = Patient(
-                  '$name (Token #$token)', 
-                  'Now', 
-                  'Consultation',
-                  patientId: pid,
-                  appointmentId: apptId,
-                  tokenNumber: token,
-                );
+                _currentPatient = pObj;
               } else if (state == 'WAITING' || (token > _currentToken && state != 'COMPLETED')) {
-                _queue.add(Patient(
-                  '$name (Token #$token)', 
-                  'Waiting', 
-                  'Consultation',
-                  patientId: pid,
-                  appointmentId: apptId,
-                  tokenNumber: token,
-                ));
+                _queue.add(pObj);
               } else if (state == 'COMPLETED') {
-                _completedQueue.add(Patient(
-                  '$name (Token #$token)', 
-                  'Completed', 
-                  'Consultation',
-                  patientId: pid,
-                  appointmentId: apptId,
-                  tokenNumber: token,
-                ));
+                _completedQueue.add(pObj);
               }
             }
           });
@@ -695,9 +703,14 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
 }
 
   Widget _buildCurrentPatientCard() {
+    final p = _currentPatient;
+    final isAppBooking = (p?.bookingSource ?? '').toUpperCase().contains('CARESEVA') || (p?.bookingSource ?? '').toUpperCase().contains('APP');
+    final srcLabel = isAppBooking ? 'CareSeva Mobile App' : 'HMS Walk-In';
+    final slotText = (p?.timeSlot != null && p!.timeSlot!.isNotEmpty) ? p.timeSlot! : 'Regular OPD';
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
@@ -716,47 +729,154 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'CURRENTLY CONSULTING',
-            style: TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (_currentPatient != null) ...[
-            Text(
-              _currentPatient!.name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'CURRENTLY CONSULTING',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  fontSize: 12,
+                ),
               ),
+              if (p != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isAppBooking ? Colors.cyan.shade300.withAlpha(50) : Colors.teal.shade300.withAlpha(50),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white38),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isAppBooking ? Icons.smartphone : Icons.directions_walk,
+                        color: Colors.white,
+                        size: 13,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        srcLabel,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (p != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          if (p.patientAge != null || (p.patientGender != null && p.patientGender != '-')) ...[
+                            Text(
+                              '${p.patientAge ?? '-'} yrs • ${p.patientGender ?? '-'}',
+                              style: const TextStyle(color: Colors.white70, fontSize: 14),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          if (p.patientPhone != null && p.patientPhone!.isNotEmpty) ...[
+                            const Icon(Icons.phone, size: 14, color: Colors.white70),
+                            const SizedBox(width: 4),
+                            Text(
+                              p.patientPhone!,
+                              style: const TextStyle(color: Colors.white70, fontSize: 14),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(35),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white30),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'TOKEN',
+                        style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '#${p.tokenNumber > 0 ? p.tokenNumber : _currentToken}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Token: $_currentToken',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(40),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.access_time_rounded, size: 16, color: Colors.amberAccent),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Booked Time Slot: $slotText',
+                    style: const TextStyle(
+                      color: Colors.amberAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             ),
           ] else ...[
             const Text(
-              'No active patient',
+              'No active patient in consultation',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 28,
+                fontSize: 24,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Call the next patient from the queue to begin.',
+              'Call the next patient from the upcoming queue to start consultation.',
               style: TextStyle(
                 color: Colors.white70,
-                fontSize: 16,
+                fontSize: 14,
               ),
             ),
           ],
@@ -887,23 +1007,76 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final patient = _queue[index];
+                final isApp = (patient.bookingSource ?? '').toUpperCase().contains('CARESEVA') || (patient.bookingSource ?? '').toUpperCase().contains('APP');
+                final slot = (patient.timeSlot != null && patient.timeSlot!.isNotEmpty) ? patient.timeSlot! : 'Regular OPD';
+
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   leading: CircleAvatar(
-                    backgroundColor: Colors.blue.shade50,
+                    backgroundColor: const Color(0xFF1565C0).withAlpha(20),
                     child: Text(
                       '${patient.tokenNumber}',
-                      style: TextStyle(
-                        color: Colors.blue.shade800,
+                      style: const TextStyle(
+                        color: Color(0xFF1565C0),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  title: Text(
-                    patient.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          patient.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isApp ? Colors.blue.shade50 : Colors.teal.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: isApp ? Colors.blue.shade200 : Colors.teal.shade200),
+                        ),
+                        child: Text(
+                          isApp ? 'App' : 'Walk-In',
+                          style: TextStyle(
+                            color: isApp ? Colors.blue.shade800 : Colors.teal.shade800,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  subtitle: Text(patient.reason),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time_outlined, size: 13, color: Color(0xFF1565C0)),
+                            const SizedBox(width: 4),
+                            Text(
+                              slot,
+                              style: const TextStyle(
+                                color: Color(0xFF1565C0),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (patient.patientPhone != null && patient.patientPhone!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Phone: ${patient.patientPhone}',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 );
               },
             ),

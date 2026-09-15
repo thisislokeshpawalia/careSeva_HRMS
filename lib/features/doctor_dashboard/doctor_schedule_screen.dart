@@ -604,11 +604,20 @@ class _DoctorScheduleScreenState extends ConsumerState<DoctorScheduleScreen> {
                           Icon(Icons.person_outline, size: 14, color: Colors.grey.shade600),
                           const SizedBox(width: 4),
                           Text(ageGender, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Icon(Icons.phone_outlined, size: 14, color: Colors.grey.shade600),
                           const SizedBox(width: 4),
                           Text(phone, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
+                          const Icon(Icons.schedule, size: 14, color: Color(0xFF1565C0)),
+                          const SizedBox(width: 4),
+                          Text(
+                            (appt['time_slot'] != null && appt['time_slot'].toString().isNotEmpty)
+                                ? appt['time_slot'].toString()
+                                : 'Regular OPD',
+                            style: const TextStyle(color: Color(0xFF1565C0), fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 14),
                           Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade600),
                           const SizedBox(width: 4),
                           Text(_formatRowDate(date), style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
