@@ -22,6 +22,7 @@ class Patient {
   final String? patientPhone;
   final int? patientAge;
   final String? patientGender;
+  final String? checkInStatus;
 
   Patient(
     this.name, 
@@ -36,6 +37,7 @@ class Patient {
     this.patientPhone,
     this.patientAge,
     this.patientGender,
+    this.checkInStatus,
   });
 }
 
@@ -194,6 +196,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
               String? phone = entry['patient_phone'];
               int? age = entry['patient_age'] is int ? entry['patient_age'] : int.tryParse(entry['patient_age']?.toString() ?? '');
               String? gender = entry['patient_gender'];
+              String? cStatus = entry['check_in_status'];
               
               final pObj = Patient(
                 name, 
@@ -207,6 +210,7 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                 patientPhone: phone,
                 patientAge: age,
                 patientGender: gender,
+                checkInStatus: cStatus,
               );
 
               if (token == _currentToken && (state == 'CALLED' || state == 'IN_PROGRESS' || state == 'WAITING')) {
@@ -1030,6 +1034,24 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen> {
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                       ),
+                      if (isApp)
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (patient.checkInStatus == 'CHECKED_IN') ? Colors.green.shade50 : Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: (patient.checkInStatus == 'CHECKED_IN') ? Colors.green.shade300 : Colors.amber.shade300),
+                          ),
+                          child: Text(
+                            (patient.checkInStatus == 'CHECKED_IN') ? 'Checked-In' : 'Pending Arrival',
+                            style: TextStyle(
+                              color: (patient.checkInStatus == 'CHECKED_IN') ? Colors.green.shade800 : Colors.amber.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
