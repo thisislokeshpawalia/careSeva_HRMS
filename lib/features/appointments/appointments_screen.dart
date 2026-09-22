@@ -29,8 +29,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   @override
   void initState() {
     super.initState();
-    // Gentle 15-second background auto-refresh that doesn't wipe existing UI
-    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    // Fast 4-second background auto-refresh for instant CMS booking reflection
+    _pollingTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (mounted) {
         final authState = ref.read(authProvider);
         final hospitalId = (authState.hospitalId != null && authState.hospitalId != 'dummy_hospital_123')
