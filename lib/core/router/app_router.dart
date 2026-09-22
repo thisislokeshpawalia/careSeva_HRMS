@@ -116,12 +116,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (role == UserRole.doctor) return '/doctor-dashboard';
         }
 
-        // Prevent role mixing
+        // Prevent role mixing & facility type violations
         if (role == UserRole.admin && path.startsWith('/doctor-dashboard')) {
           return '/dashboard';
         }
         if (role == UserRole.doctor && !path.startsWith('/doctor-dashboard')) {
           return '/doctor-dashboard';
+        }
+
+        // Clinics (CMS) cannot access Admissions module
+        if (authState.isClinic && path.startsWith('/admissions')) {
+          return '/dashboard';
         }
       }
       return null;

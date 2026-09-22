@@ -11,12 +11,14 @@ class DashboardShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isDesktop = MediaQuery.of(context).size.width >= 1024;
+    final authState = ref.watch(authProvider);
+    final isClinic = authState.isClinic;
 
     return Scaffold(
       appBar: isDesktop
           ? null
           : AppBar(
-              title: const Text('CareQueue HMS'),
+              title: Text(isClinic ? 'CareSeva CMS' : 'CareQueue HMS'),
             ),
       drawer: isDesktop ? null : const _DashboardSidebar(),
       body: Row(
@@ -36,16 +38,42 @@ class DashboardShell extends ConsumerWidget {
                       ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.notifications_outlined),
-                          onPressed: () {},
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isClinic ? Colors.teal.shade50 : Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isClinic ? Colors.teal.shade200 : Colors.blue.shade200,
+                                ),
+                              ),
+                              child: Text(
+                                isClinic ? 'Clinical Management System (CMS)' : 'Hospital Management System (HMS)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isClinic ? Colors.teal.shade800 : Colors.blue.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        const CircleAvatar(
-                          backgroundColor: Color(0xFF1565C0),
-                          child: Icon(Icons.person, color: Colors.white),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.notifications_outlined),
+                              onPressed: () {},
+                            ),
+                            const SizedBox(width: 16),
+                            const CircleAvatar(
+                              backgroundColor: Color(0xFF1565C0),
+                              child: Icon(Icons.person, color: Colors.white),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -68,6 +96,8 @@ class _DashboardSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
+    final authState = ref.watch(authProvider);
+    final isClinic = authState.isClinic;
 
     return Container(
       width: 280,
@@ -85,10 +115,13 @@ class _DashboardSidebar extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.local_hospital, color: Color(0xFF1565C0)),
+                Icon(
+                  isClinic ? Icons.medical_services_outlined : Icons.local_hospital,
+                  color: const Color(0xFF1565C0),
+                ),
                 const SizedBox(width: 12),
                 Text(
-                  'CareQueue HMS',
+                  isClinic ? 'CareSeva CMS' : 'CareQueue HMS',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF0D47A1),
@@ -113,35 +146,63 @@ class _DashboardSidebar extends ConsumerWidget {
                   isSelected: location == '/patients',
                   onTap: () => context.go('/patients'),
                 ),
-                _SidebarItem(
-                  icon: Icons.hotel_outlined,
-                  title: 'Admissions',
-                  isSelected: location == '/admissions',
-                  onTap: () => context.go('/admissions'),
-                ),
-                _SidebarItem(
-                  icon: Icons.medical_services_outlined,
-                  title: 'Doctors',
-                  isSelected: location == '/doctors',
-                  onTap: () => context.go('/doctors'),
-                ),
+                if (!isClinic) ...[
+                  _SidebarItem(
+                    icon: Icons.hotel_outlined,
+                    title: 'Admissions',
+                    isSelected: location == '/admissions',
+                    onTap: () => context.go('/admissions'),
+                  ),
+                  _SidebarItem(
+                    icon: Icons.medical_services_outlined,
+                    title: 'Doctors',
+                    isSelected: location == '/doctors',
+                    onTap: () => context.go('/doctors'),
+                  ),
+                ],
                 _SidebarItem(
                   icon: Icons.calendar_today_outlined,
                   title: 'Appointments',
                   isSelected: location == '/appointments',
                   onTap: () => context.go('/appointments'),
                 ),
-                _SidebarItem(
-                  icon: Icons.folder_shared_outlined,
-                  title: 'Patient Records',
-                  isSelected: location == '/patient-records',
-                  onTap: () => context.go('/patient-records'),
-                ),
+                if (!isClinic) ...[
+                  _SidebarItem(
+                    icon: Icons.folder_shared_outlined,
+                    title: 'Patient Records',
+                    isSelected: location == '/patient-records',
+                    onTap: () => context.go('/patient-records'),
+                  ),
+                ],
                 _SidebarItem(
                   icon: Icons.settings_outlined,
                   title: 'Settings',
                   isSelected: location == '/settings',
                   onTap: () => context.go('/settings'),
+                ),
+                if (isClinic) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4, right: 16),
+                    child: ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.medical_services_outlined, size: 18),
+                      title: const Text('└── Doctor Management', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      selected: location == '/doctors',
+                      selectedTileColor: const Color(0xFF1565C0).withAlpha(20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      onTap: () => context.go('/doctors'),
+                    ),
+                  ),
+                ],
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Divider(),
+                ),
+                _SidebarItem(
+                  icon: Icons.badge_outlined,
+                  title: 'Doctors Portal',
+                  isSelected: location.startsWith('/doctor-dashboard'),
+                  onTap: () => context.go('/doctor-dashboard'),
                 ),
               ],
             ),

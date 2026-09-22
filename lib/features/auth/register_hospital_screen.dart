@@ -15,10 +15,17 @@ class RegisterHospitalScreen extends StatefulWidget {
 
 class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // Facility Type Selection: 'clinic' or 'hospital'
+  String? _facilityType; 
+
+  // Basic Controllers
   final _nameController = TextEditingController();
+  final _legalEntityController = TextEditingController();
   final _contactPersonController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _websiteController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
@@ -26,24 +33,85 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
   final _passwordController = TextEditingController();
   final _latController = TextEditingController();
   final _lngController = TextEditingController();
-  final _legalEntityController = TextEditingController();
+  final _yearEstablishedController = TextEditingController();
+
+  // Clinic Specific Controllers & State
+  String _clinicType = 'General Clinic';
+  String _systemOfMedicine = 'Allopathy';
+  final _ownerNameController = TextEditingController();
+  final _ownerDesignationController = TextEditingController();
+  final _ownerPhoneController = TextEditingController();
+  final _ownerEmailController = TextEditingController();
+  final _udyamController = TextEditingController();
+
+  // Hospital Specific Controllers & State
+  String _ownershipType = 'Private';
+  final _totalBedsController = TextEditingController(text: '0');
+  final _operationalBedsController = TextEditingController(text: '0');
+  final _icuBedsController = TextEditingController(text: '0');
+  final _emergencyBedsController = TextEditingController(text: '0');
+  final _hduBedsController = TextEditingController(text: '0');
+  final _isolationBedsController = TextEditingController(text: '0');
+  
+  bool _hasNabhAccreditation = false;
+  String _nabhLevel = 'NONE';
+  final _nabhNumberController = TextEditingController();
+
+  // Legal & Statutory Credentials
   final _ceaNumberController = TextEditingController();
   final _gstinController = TextEditingController();
   final _panController = TextEditingController();
   final _msNameController = TextEditingController();
   final _msRegController = TextEditingController();
-  final _bedsController = TextEditingController();
-  String _nabhAccreditation = 'NONE';
+  final _bmwAuthController = TextEditingController();
+  final _pharmacyLicenseController = TextEditingController();
+  final _fireNocController = TextEditingController();
+
+  // Selected Services & Specialities
+  final Set<String> _selectedSpecialities = {
+    'General Medicine', 'Paediatrics', 'Gynaecology'
+  };
+  final Set<String> _selectedHospitalServices = {
+    'OPD', 'IPD', 'Emergency', 'Laboratory', 'Pharmacy'
+  };
+
   bool _slaAccepted = true;
   bool _isLoading = false;
   bool _fetchingLocation = false;
 
+  final List<String> _availableClinicTypes = [
+    'General Clinic', 'Specialist Clinic', 'Polyclinic', 
+    'Dental Clinic', 'Ayurveda Clinic', 'Homeopathy Clinic', 'Other'
+  ];
+
+  final List<String> _availableSystemsOfMedicine = [
+    'Allopathy', 'Ayurveda', 'Homeopathy', 'Dental', 'Unani', 'Siddha', 'Other'
+  ];
+
+  final List<String> _availableOwnershipTypes = [
+    'Private', 'Corporate', 'Trust', 'Society', 'Government', 'Other'
+  ];
+
+  final List<String> _availableSpecialities = [
+    'General Medicine', 'Dentistry', 'Dermatology', 'ENT', 'Orthopaedics',
+    'Gynaecology', 'Paediatrics', 'Physiotherapy', 'Ayurveda', 'Homeopathy',
+    'Cardiology', 'Neurology', 'Ophthalmology', 'Psychiatry', 'Urology'
+  ];
+
+  final List<String> _availableHospitalServices = [
+    'OPD', 'IPD', 'Emergency', 'ICU', 'Operation Theatre', 'Laboratory',
+    'Radiology', 'Pharmacy', 'Blood Bank', 'Ambulance', 'Dialysis', 
+    'Maternity', 'NICU', 'PICU'
+  ];
+
   @override
   void dispose() {
     _nameController.dispose();
+    _legalEntityController.dispose();
     _contactPersonController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _websiteController.dispose();
     _addressController.dispose();
     _cityController.dispose();
     _stateController.dispose();
@@ -51,17 +119,44 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
     _passwordController.dispose();
     _latController.dispose();
     _lngController.dispose();
-    _legalEntityController.dispose();
+    _yearEstablishedController.dispose();
+
+    _ownerNameController.dispose();
+    _ownerDesignationController.dispose();
+    _ownerPhoneController.dispose();
+    _ownerEmailController.dispose();
+    _udyamController.dispose();
+
+    _totalBedsController.dispose();
+    _operationalBedsController.dispose();
+    _icuBedsController.dispose();
+    _emergencyBedsController.dispose();
+    _hduBedsController.dispose();
+    _isolationBedsController.dispose();
+    _nabhNumberController.dispose();
+
     _ceaNumberController.dispose();
     _gstinController.dispose();
     _panController.dispose();
     _msNameController.dispose();
     _msRegController.dispose();
-    _bedsController.dispose();
+    _bmwAuthController.dispose();
+    _pharmacyLicenseController.dispose();
+    _fireNocController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
+    if (_facilityType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.red,
+          content: Text('Please select a facility type: CLINIC or HOSPITAL before submitting.'),
+        ),
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       if (!_slaAccepted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -71,30 +166,56 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
       }
       setState(() => _isLoading = true);
       
-      final payload = {
-        "name": _nameController.text,
-        "facility_type": "Hospital",
-        "contact_person": _contactPersonController.text,
-        "phone": _phoneController.text,
-        "email": _emailController.text,
-        "address": _addressController.text,
-        "city": _cityController.text,
-        "state": _stateController.text,
-        "pincode": _pincodeController.text,
+      final Map<String, dynamic> payload = {
+        "name": _nameController.text.trim(),
+        "facility_type": _facilityType, // 'clinic' or 'hospital'
+        "contact_person": _contactPersonController.text.trim(),
+        "phone": _phoneController.text.trim(),
+        "email": _emailController.text.trim(),
+        "address": _addressController.text.trim(),
+        "city": _cityController.text.trim(),
+        "state": _stateController.text.trim(),
+        "pincode": _pincodeController.text.trim(),
         "latitude": double.tryParse(_latController.text),
         "longitude": double.tryParse(_lngController.text),
-        "legal_entity_name": _legalEntityController.text.isEmpty ? _nameController.text : _legalEntityController.text,
-        "clinical_establishment_no": _ceaNumberController.text,
-        "gstin": _gstinController.text,
-        "pan_number": _panController.text,
-        "nabh_accreditation": _nabhAccreditation,
-        "medical_superintendent_name": _msNameController.text,
-        "medical_superintendent_reg_no": _msRegController.text,
-        "total_beds": int.tryParse(_bedsController.text) ?? 0,
+        "legal_entity_name": _legalEntityController.text.isEmpty ? _nameController.text.trim() : _legalEntityController.text.trim(),
+        "clinical_establishment_no": _ceaNumberController.text.trim(),
+        "gstin": _gstinController.text.trim(),
+        "pan_number": _panController.text.trim(),
+        "specialties": _selectedSpecialities.toList(),
+        "password": _passwordController.text,
         "sla_accepted": _slaAccepted,
-        "specialties": [],
-        "password": _passwordController.text
+        "system_of_medicine": _systemOfMedicine,
       };
+
+      if (_facilityType == 'clinic') {
+        payload.addAll({
+          "clinic_type": _clinicType,
+          "owner_name": _ownerNameController.text.trim(),
+          "owner_designation": _ownerDesignationController.text.trim(),
+          "owner_phone": _ownerPhoneController.text.trim(),
+          "owner_email": _ownerEmailController.text.trim(),
+          "udyam_number": _udyamController.text.trim(),
+        });
+      } else {
+        payload.addAll({
+          "ownership_type": _ownershipType,
+          "total_beds": int.tryParse(_totalBedsController.text) ?? 0,
+          "operational_beds": int.tryParse(_operationalBedsController.text) ?? 0,
+          "icu_beds": int.tryParse(_icuBedsController.text) ?? 0,
+          "emergency_beds": int.tryParse(_emergencyBedsController.text) ?? 0,
+          "hdu_beds": int.tryParse(_hduBedsController.text) ?? 0,
+          "isolation_beds": int.tryParse(_isolationBedsController.text) ?? 0,
+          "services": _selectedHospitalServices.toList(),
+          "has_nabh": _hasNabhAccreditation,
+          "nabh_accreditation": _hasNabhAccreditation ? _nabhLevel : "NONE",
+          "medical_superintendent_name": _msNameController.text.trim(),
+          "medical_superintendent_reg_no": _msRegController.text.trim(),
+          "bmw_auth_number": _bmwAuthController.text.trim(),
+          "pharmacy_license_no": _pharmacyLicenseController.text.trim(),
+          "fire_noc_number": _fireNocController.text.trim(),
+        });
+      }
 
       try {
         final response = await http.post(
@@ -110,14 +231,14 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
               context: context,
               barrierDismissible: false,
               builder: (ctx) => AlertDialog(
-                title: const Text('Registration Successful!'),
+                title: Text('${_facilityType == 'clinic' ? 'Clinic' : 'Hospital'} Registration Successful!'),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Your facility has been registered and is pending approval.'),
+                    Text('Your ${_facilityType == 'clinic' ? 'clinic' : 'hospital'} has been onboarded to CareSeva and is pending verification.'),
                     const SizedBox(height: 16),
-                    const Text('Please save your unique Hospital ID (HopID). You and your doctors will need it to login:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Please save your unique Facility ID (HopID). You and your doctors will need it to login:', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -193,7 +314,6 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
         _lngController.text = lng;
       });
 
-      // Auto-fill City, State, Pincode & Address via Reverse Geocoding
       String autoCity = '';
       String autoState = '';
       String autoPincode = '';
@@ -211,11 +331,10 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
           autoAddress = data['address'] ?? '';
         }
       } catch (_) {
-        // Direct client fallback to OpenStreetMap if backend reverse geocode is unreachable
         try {
           final clientRes = await http.get(
             Uri.parse('https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1'),
-            headers: {'User-Agent': 'CareSeva-Hospital-Registry/1.0'},
+            headers: {'User-Agent': 'CareSeva-Facility-Registry/1.0'},
           );
           if (clientRes.statusCode == 200) {
             final data = jsonDecode(clientRes.body);
@@ -238,22 +357,11 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
           }
         });
 
-        String info = 'Location coordinates fetched!';
-        if (autoCity.isNotEmpty || autoState.isNotEmpty || autoPincode.isNotEmpty) {
-          info = 'Location fetched! Auto-filled $autoCity, $autoState ${autoPincode.isNotEmpty ? '($autoPincode)' : ''}';
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF1565C0),
             behavior: SnackBarBehavior.floating,
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Expanded(child: Text(info, style: const TextStyle(fontWeight: FontWeight.bold))),
-              ],
-            ),
+            content: Text('Location coordinates fetched: Lat $lat, Lng $lng'),
           ),
         );
       }
@@ -273,7 +381,7 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Register Hospital'),
+        title: const Text('Register Healthcare Facility'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -285,318 +393,682 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(maxWidth: 680),
             child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(28.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(
-                        Icons.local_hospital,
-                        size: 48,
-                        color: Color(0xFF1565C0),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Hospital Registration',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF0D47A1),
+                      // Header & Logo
+                      const Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.health_and_safety,
+                              size: 52,
+                              color: Color(0xFF1565C0),
                             ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'Hospital Name', prefixIcon: Icon(Icons.business)),
-                        validator: (v) => v!.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _contactPersonController,
-                        decoration: const InputDecoration(labelText: 'Contact Person (Admin)', prefixIcon: Icon(Icons.person)),
-                        validator: (v) => v!.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email)),
-                        validator: (v) => v!.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone)),
-                        validator: (v) => v!.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Admin Password', prefixIcon: Icon(Icons.lock)),
-                        validator: (v) => v!.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _cityController,
-                              decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city)),
-                              validator: (v) => v!.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _stateController,
-                              decoration: const InputDecoration(labelText: 'State'),
-                              validator: (v) => v!.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: _addressController,
-                              decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on)),
-                              validator: (v) => v!.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 1,
-                            child: TextFormField(
-                              controller: _pincodeController,
-                              decoration: const InputDecoration(labelText: 'Pincode'),
-                              validator: (v) => v!.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _latController,
-                              decoration: const InputDecoration(labelText: 'Latitude', prefixIcon: Icon(Icons.explore)),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _lngController,
-                              decoration: const InputDecoration(labelText: 'Longitude', prefixIcon: Icon(Icons.explore)),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: _fetchingLocation ? null : _fetchLocation,
-                        icon: _fetchingLocation 
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
-                          : const Icon(Icons.my_location),
-                        label: Text(_fetchingLocation ? 'Fetching...' : 'Fetch Current Location'),
-                      ),
-                      const SizedBox(height: 24),
-                      const Divider(),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(Icons.shield_outlined, color: Color(0xFF1565C0), size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Statutory & Legal Em-panelment Credentials',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blue.shade900),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Required under the Clinical Establishments Act and CareSeva Aggregator Compliance.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _ceaNumberController,
-                        decoration: const InputDecoration(
-                          labelText: 'Clinical Establishment Act (CEA) Reg #',
-                          prefixIcon: Icon(Icons.verified_user_outlined),
-                          hintText: 'e.g. CEA/UP/2026/0412',
-                        ),
-                        validator: (v) => v!.isEmpty ? 'CEA Registration # is required by law' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _legalEntityController,
-                        decoration: const InputDecoration(
-                          labelText: 'Registered Legal Entity Name',
-                          prefixIcon: Icon(Icons.apartment_outlined),
-                          hintText: 'e.g. Apollo Healthcare Ltd or Trust Name',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _gstinController,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 15,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-                                LengthLimitingTextInputFormatter(15),
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Hospital GSTIN (15 Digits)',
-                                prefixIcon: Icon(Icons.receipt_long),
-                                hintText: '09ABCDE1234F1Z5',
-                                counterText: '',
+                            SizedBox(height: 8),
+                            Text(
+                              'CareSeva',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0D47A1),
+                                letterSpacing: 1.1,
                               ),
-                              validator: (v) {
-                                if (v != null && v.trim().isNotEmpty) {
-                                  final clean = v.trim().toUpperCase();
-                                  if (clean.length != 15) {
-                                    return 'GSTIN must be exactly 15 characters';
-                                  }
-                                  if (!RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$').hasMatch(clean)) {
-                                    return 'Invalid GST format (e.g. 09ABCDE1234F1Z5)';
-                                  }
-                                }
-                                return null;
-                              },
-                              onChanged: (val) {
-                                if (val.trim().length == 15 && _panController.text.trim().isEmpty) {
-                                  final extractedPan = val.trim().substring(2, 12).toUpperCase();
-                                  if (RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$').hasMatch(extractedPan)) {
-                                    setState(() {
-                                      _panController.text = extractedPan;
-                                    });
-                                  }
-                                }
-                              },
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _panController,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 10,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-                                LengthLimitingTextInputFormatter(10),
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Hospital PAN (10 Chars)',
-                                prefixIcon: Icon(Icons.badge_outlined),
-                                hintText: 'ABCDE1234F',
-                                counterText: '',
-                              ),
-                              validator: (v) {
-                                if (v != null && v.trim().isNotEmpty) {
-                                  final clean = v.trim().toUpperCase();
-                                  if (clean.length != 10) {
-                                    return 'PAN must be exactly 10 characters';
-                                  }
-                                  if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$').hasMatch(clean)) {
-                                    return 'Invalid PAN (e.g. ABCDE1234F)';
-                                  }
-                                }
-                                return null;
-                              },
+                            SizedBox(height: 4),
+                            Text(
+                              'Healthcare Facility Registration & Onboarding',
+                              style: TextStyle(color: Colors.grey, fontSize: 13),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _msNameController,
-                        decoration: const InputDecoration(labelText: 'Medical Superintendent / CMO Name', prefixIcon: Icon(Icons.medical_services_outlined)),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _msRegController,
-                        textCapitalization: TextCapitalization.characters,
-                        maxLength: 25,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\/-]')),
-                          LengthLimitingTextInputFormatter(25),
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'State Medical Council / NMC Reg #',
-                          prefixIcon: Icon(Icons.verified_outlined),
-                          hintText: 'e.g. NMC-2018-0921 or MCI-45123',
-                          counterText: '',
+                          ],
                         ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'State Medical Council / NMC Reg # is required by law';
-                          }
-                          final clean = v.trim().toUpperCase();
-                          if (clean.length < 3) {
-                            return 'Registration # is too short';
-                          }
-                          if (!RegExp(r'^[A-Z0-9\/-]{3,25}$').hasMatch(clean)) {
-                            return 'Invalid format (e.g. NMC-2018-0921 or MCI-45123)';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _bedsController,
-                        decoration: const InputDecoration(labelText: 'Total Monitored Inpatient Beds', prefixIcon: Icon(Icons.hotel_outlined), hintText: 'e.g. 50'),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _nabhAccreditation,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'NABH / Quality Accreditation', prefixIcon: Icon(Icons.workspace_premium_outlined)),
-                        items: const [
-                          DropdownMenuItem(value: 'NONE', child: Text('None / Non-Accredited', overflow: TextOverflow.ellipsis)),
-                          DropdownMenuItem(value: 'ENTRY_LEVEL', child: Text('NABH Entry Level', overflow: TextOverflow.ellipsis)),
-                          DropdownMenuItem(value: 'FULL_NABH', child: Text('Full NABH Certified', overflow: TextOverflow.ellipsis)),
-                          DropdownMenuItem(value: 'NABL', child: Text('NABL Certified (Diagnostics)', overflow: TextOverflow.ellipsis)),
-                        ],
-                        onChanged: (val) => setState(() => _nabhAccreditation = val ?? 'NONE'),
-                      ),
-                      const SizedBox(height: 16),
-                      CheckboxListTile(
-                        value: _slaAccepted,
-                        onChanged: (val) => setState(() => _slaAccepted = val ?? false),
-                        title: const Text(
-                          'I declare that all submitted clinical details are true and accept the CareSeva Digital Master Service Agreement & Statutory Healthcare Indemnity Terms.',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
                       ),
                       const SizedBox(height: 24),
-                      _isLoading 
-                        ? const Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: _register,
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Text('Register Hospital'),
+
+                      // MANDATORY FACILITY TYPE TOGGLE
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50.withAlpha(120),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'What type of healthcare facility are you registering?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF0D47A1),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _facilityType = 'clinic'),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: _facilityType == 'clinic' 
+                                            ? Colors.teal.shade700 
+                                            : Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: _facilityType == 'clinic'
+                                            ? [BoxShadow(color: Colors.teal.withAlpha(80), blurRadius: 8, offset: const Offset(0, 4))]
+                                            : [],
+                                        border: Border.all(
+                                          color: _facilityType == 'clinic' ? Colors.teal.shade700 : Colors.grey.shade300,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.medical_services_outlined,
+                                            color: _facilityType == 'clinic' ? Colors.white : Colors.teal.shade800,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'CLINIC',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: _facilityType == 'clinic' ? Colors.white : Colors.teal.shade900,
+                                            ),
+                                          ),
+                                          Text(
+                                            'CareSeva CMS',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: _facilityType == 'clinic' ? Colors.white70 : Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _facilityType = 'hospital'),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: _facilityType == 'hospital' 
+                                            ? const Color(0xFF1565C0) 
+                                            : Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: _facilityType == 'hospital'
+                                            ? [BoxShadow(color: Colors.blue.withAlpha(80), blurRadius: 8, offset: const Offset(0, 4))]
+                                            : [],
+                                        border: Border.all(
+                                          color: _facilityType == 'hospital' ? const Color(0xFF1565C0) : Colors.grey.shade300,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.local_hospital,
+                                            color: _facilityType == 'hospital' ? Colors.white : const Color(0xFF1565C0),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'HOSPITAL',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: _facilityType == 'hospital' ? Colors.white : const Color(0xFF0D47A1),
+                                            ),
+                                          ),
+                                          Text(
+                                            'CareSeva HMS',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: _facilityType == 'hospital' ? Colors.white70 : Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      if (_facilityType == null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Please tap CLINIC or HOSPITAL above to start the onboarding form.',
+                            style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                      ] else ...[
+                        // BASIC FACILITY INFORMATION
+                        _buildSectionHeader(
+                          title: _facilityType == 'clinic' ? '1. Clinic Basic Information' : '1. Hospital Basic Information',
+                          icon: Icons.info_outline,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: _facilityType == 'clinic' ? 'Clinic Name *' : 'Hospital Name *',
+                            prefixIcon: const Icon(Icons.business),
+                          ),
+                          validator: (v) => v!.isEmpty ? 'Facility name is required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _legalEntityController,
+                          decoration: const InputDecoration(
+                            labelText: 'Registered Legal Entity Name',
+                            prefixIcon: Icon(Icons.apartment),
+                            hintText: 'e.g. Apex Health Pvt Ltd or Owner/Trust Name',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_facilityType == 'clinic') ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _clinicType,
+                                  decoration: const InputDecoration(labelText: 'Clinic Type', prefixIcon: Icon(Icons.category)),
+                                  items: _availableClinicTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                                  onChanged: (v) => setState(() => _clinicType = v!),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _systemOfMedicine,
+                                  decoration: const InputDecoration(labelText: 'System of Medicine', prefixIcon: Icon(Icons.healing)),
+                                  items: _availableSystemsOfMedicine.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                  onChanged: (v) => setState(() => _systemOfMedicine = v!),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _ownershipType,
+                                  decoration: const InputDecoration(labelText: 'Ownership Type', prefixIcon: Icon(Icons.account_balance)),
+                                  items: _availableOwnershipTypes.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                                  onChanged: (v) => setState(() => _ownershipType = v!),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _systemOfMedicine,
+                                  decoration: const InputDecoration(labelText: 'System of Medicine', prefixIcon: Icon(Icons.healing)),
+                                  items: _availableSystemsOfMedicine.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                  onChanged: (v) => setState(() => _systemOfMedicine = v!),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _contactPersonController,
+                                decoration: const InputDecoration(labelText: 'Admin / Contact Person *', prefixIcon: Icon(Icons.person)),
+                                validator: (v) => v!.isEmpty ? 'Contact person required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _phoneController,
+                                decoration: const InputDecoration(labelText: 'Official Phone *', prefixIcon: Icon(Icons.phone)),
+                                keyboardType: TextInputType.phone,
+                                validator: (v) => v!.isEmpty ? 'Phone number required' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _emailController,
+                                decoration: const InputDecoration(labelText: 'Official Email *', prefixIcon: Icon(Icons.email)),
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (v) => v!.isEmpty ? 'Email required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                decoration: const InputDecoration(labelText: 'Admin Password *', prefixIcon: Icon(Icons.lock)),
+                                validator: (v) => v!.isEmpty ? 'Password required' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // CLINIC OWNER / AUTHORIZED REPRESENTATIVE (Only for Clinic)
+                        if (_facilityType == 'clinic') ...[
+                          const SizedBox(height: 20),
+                          _buildSectionHeader(title: '2. Clinic Owner / Proprietor Details', icon: Icons.person_pin),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _ownerNameController,
+                                  decoration: const InputDecoration(labelText: 'Owner / Proprietor Name', prefixIcon: Icon(Icons.badge)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _ownerDesignationController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Designation', 
+                                    prefixIcon: Icon(Icons.work),
+                                    hintText: 'e.g. Proprietor, Director',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _ownerPhoneController,
+                                  decoration: const InputDecoration(labelText: 'Owner Phone', prefixIcon: Icon(Icons.phone_android)),
+                                  keyboardType: TextInputType.phone,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _udyamController,
+                                  decoration: const InputDecoration(labelText: 'Udyam Registration # (Optional)', prefixIcon: Icon(Icons.verified)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        // HOSPITAL CAPACITY DETAILS (Only for Hospital)
+                        if (_facilityType == 'hospital') ...[
+                          const SizedBox(height: 20),
+                          _buildSectionHeader(title: '2. Hospital Capacity & Beds', icon: Icons.hotel),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _totalBedsController,
+                                  decoration: const InputDecoration(labelText: 'Sanctioned Beds', prefixIcon: Icon(Icons.bed)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _operationalBedsController,
+                                  decoration: const InputDecoration(labelText: 'Operational Beds', prefixIcon: Icon(Icons.bed_outlined)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _icuBedsController,
+                                  decoration: const InputDecoration(labelText: 'ICU Beds', prefixIcon: Icon(Icons.monitor_heart)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _emergencyBedsController,
+                                  decoration: const InputDecoration(labelText: 'Emergency Beds', prefixIcon: Icon(Icons.emergency)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _hduBedsController,
+                                  decoration: const InputDecoration(labelText: 'HDU Beds', prefixIcon: Icon(Icons.hotel_class)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _isolationBedsController,
+                                  decoration: const InputDecoration(labelText: 'Isolation Beds', prefixIcon: Icon(Icons.masks)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        // LOCATION DETAILS
+                        const SizedBox(height: 20),
+                        _buildSectionHeader(title: '3. Location Details', icon: Icons.location_on),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                controller: _addressController,
+                                decoration: const InputDecoration(labelText: 'Full Address *', prefixIcon: Icon(Icons.home)),
+                                validator: (v) => v!.isEmpty ? 'Address is required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 1,
+                              child: TextFormField(
+                                controller: _pincodeController,
+                                decoration: const InputDecoration(labelText: 'Pincode *', prefixIcon: Icon(Icons.pin_drop)),
+                                keyboardType: TextInputType.number,
+                                validator: (v) => v!.isEmpty ? 'Pincode required' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _cityController,
+                                decoration: const InputDecoration(labelText: 'City *', prefixIcon: Icon(Icons.location_city)),
+                                validator: (v) => v!.isEmpty ? 'City required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _stateController,
+                                decoration: const InputDecoration(labelText: 'State *', prefixIcon: Icon(Icons.map)),
+                                validator: (v) => v!.isEmpty ? 'State required' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _latController,
+                                decoration: const InputDecoration(labelText: 'Latitude', prefixIcon: Icon(Icons.explore)),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _lngController,
+                                decoration: const InputDecoration(labelText: 'Longitude', prefixIcon: Icon(Icons.explore)),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton.icon(
+                              onPressed: _fetchingLocation ? null : _fetchLocation,
+                              icon: _fetchingLocation 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                                : const Icon(Icons.my_location),
+                              label: Text(_fetchingLocation ? 'Fetching...' : 'GPS Location'),
+                            ),
+                          ],
+                        ),
+
+                        // SPECIALITIES & SERVICES
+                        const SizedBox(height: 20),
+                        _buildSectionHeader(
+                          title: '4. Specialities & Services Offered', 
+                          icon: Icons.medical_information,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Select specialities offered (integrated with patient app search):', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: _availableSpecialities.map((s) {
+                            final isSel = _selectedSpecialities.contains(s);
+                            return FilterChip(
+                              label: Text(s),
+                              selected: isSel,
+                              selectedColor: Colors.teal.shade100,
+                              onSelected: (val) {
+                                setState(() {
+                                  if (val) {
+                                    _selectedSpecialities.add(s);
+                                  } else {
+                                    _selectedSpecialities.remove(s);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+
+                        if (_facilityType == 'hospital') ...[
+                          const SizedBox(height: 14),
+                          const Text('Select Hospital Services:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: _availableHospitalServices.map((hs) {
+                              final isSel = _selectedHospitalServices.contains(hs);
+                              return FilterChip(
+                                label: Text(hs),
+                                selected: isSel,
+                                selectedColor: Colors.blue.shade100,
+                                onSelected: (val) {
+                                  setState(() {
+                                    if (val) {
+                                      _selectedHospitalServices.add(hs);
+                                    } else {
+                                      _selectedHospitalServices.remove(hs);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+
+                        // STATUTORY LEGAL CREDENTIALS
+                        const SizedBox(height: 20),
+                        _buildSectionHeader(title: '5. Statutory Credentials & Legal Compliance', icon: Icons.gavel),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _ceaNumberController,
+                          decoration: const InputDecoration(
+                            labelText: 'Clinical Establishment Reg # (CEA) *',
+                            prefixIcon: Icon(Icons.verified_user_outlined),
+                            hintText: 'e.g. CEA/UP/2026/0412',
+                          ),
+                          validator: (v) => v!.isEmpty ? 'CEA Reg # is required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _gstinController,
+                                textCapitalization: TextCapitalization.characters,
+                                maxLength: 15,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                                  LengthLimitingTextInputFormatter(15),
+                                ],
+                                decoration: const InputDecoration(
+                                  labelText: 'GSTIN (15 Digits - Optional)',
+                                  prefixIcon: Icon(Icons.receipt_long),
+                                  counterText: '',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _panController,
+                                textCapitalization: TextCapitalization.characters,
+                                maxLength: 10,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                                  LengthLimitingTextInputFormatter(10),
+                                ],
+                                decoration: const InputDecoration(
+                                  labelText: 'PAN Number (10 Chars - Optional)',
+                                  prefixIcon: Icon(Icons.badge_outlined),
+                                  counterText: '',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        if (_facilityType == 'hospital') ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _msNameController,
+                                  decoration: const InputDecoration(labelText: 'Medical Superintendent / CMO', prefixIcon: Icon(Icons.medical_services)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _msRegController,
+                                  decoration: const InputDecoration(labelText: 'Medical Council / NMC Reg #', prefixIcon: Icon(Icons.verified)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // NABH ACCREDITATION TOGGLE (OPTIONAL)
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.amber.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.workspace_premium, color: Colors.amber),
+                                        SizedBox(width: 8),
+                                        Text('Does the hospital have NABH accreditation?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      ],
+                                    ),
+                                    Switch(
+                                      value: _hasNabhAccreditation,
+                                      onChanged: (val) => setState(() => _hasNabhAccreditation = val),
+                                    ),
+                                  ],
+                                ),
+                                if (_hasNabhAccreditation) ...[
+                                  const SizedBox(height: 10),
+                                  DropdownButtonFormField<String>(
+                                    value: _nabhLevel == 'NONE' ? 'ENTRY_LEVEL' : _nabhLevel,
+                                    decoration: const InputDecoration(labelText: 'Accreditation Level'),
+                                    items: const [
+                                      DropdownMenuItem(value: 'ENTRY_LEVEL', child: Text('NABH Entry Level')),
+                                      DropdownMenuItem(value: 'FULL_NABH', child: Text('Full NABH Certified')),
+                                      DropdownMenuItem(value: 'NABL', child: Text('NABL Certified (Lab)')),
+                                      DropdownMenuItem(value: 'JCI', child: Text('JCI International Accredited')),
+                                    ],
+                                    onChanged: (v) => setState(() => _nabhLevel = v ?? 'ENTRY_LEVEL'),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
+                        ],
+
+                        // SLA TERMS ACCEPTANCE
+                        const SizedBox(height: 20),
+                        CheckboxListTile(
+                          value: _slaAccepted,
+                          onChanged: (val) => setState(() => _slaAccepted = val ?? false),
+                          title: Text(
+                            'I declare that all submitted information for this ${_facilityType == 'clinic' ? 'Clinic' : 'Hospital'} is true and accurate, and accept the CareSeva Master Service Agreement & Statutory Terms.',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        const SizedBox(height: 24),
+                        
+                        _isLoading 
+                          ? const Center(child: CircularProgressIndicator())
+                          : ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _facilityType == 'clinic' ? Colors.teal.shade700 : const Color(0xFF1565C0),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: _register,
+                              child: Text(
+                                'Register ${_facilityType == 'clinic' ? 'Clinic (CareSeva CMS)' : 'Hospital (CareSeva HMS)'}',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                            ),
+                      ],
                     ],
                   ),
                 ),
@@ -605,6 +1077,19 @@ class _RegisterHospitalScreenState extends State<RegisterHospitalScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader({required String title, required IconData icon}) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF1565C0)),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D47A1)),
+        ),
+      ],
     );
   }
 }

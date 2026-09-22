@@ -14,6 +14,7 @@ class AuthState {
   final String verificationStatus; // 'APPROVED', 'PENDING', 'REJECTED', 'SUSPENDED'
   final String? hopId;
   final String? hospitalName;
+  final String facilityType; // 'clinic' or 'hospital'
   final String? rejectionReason;
   final String? errorMessage;
 
@@ -26,6 +27,7 @@ class AuthState {
     this.verificationStatus = 'APPROVED',
     this.hopId,
     this.hospitalName,
+    this.facilityType = 'hospital',
     this.rejectionReason,
     this.errorMessage,
   });
@@ -34,6 +36,7 @@ class AuthState {
   bool get isPending => verificationStatus.toUpperCase() == 'PENDING';
   bool get isRejected => verificationStatus.toUpperCase() == 'REJECTED';
   bool get isSuspended => verificationStatus.toUpperCase() == 'SUSPENDED';
+  bool get isClinic => facilityType.toLowerCase() == 'clinic';
 
   AuthState copyWith({
     bool? isAuthenticated,
@@ -44,6 +47,7 @@ class AuthState {
     String? verificationStatus,
     String? hopId,
     String? hospitalName,
+    String? facilityType,
     String? rejectionReason,
     String? errorMessage,
   }) {
@@ -56,6 +60,7 @@ class AuthState {
       verificationStatus: verificationStatus ?? this.verificationStatus,
       hopId: hopId ?? this.hopId,
       hospitalName: hospitalName ?? this.hospitalName,
+      facilityType: facilityType ?? this.facilityType,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -76,6 +81,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final vStatus = (data['verification_status'] ?? 'APPROVED').toString().toUpperCase();
+        final fType = (data['facility_type'] ?? 'hospital').toString().toLowerCase();
         
         state = state.copyWith(
           isAuthenticated: true, 
@@ -86,6 +92,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           verificationStatus: vStatus,
           hopId: data['hop_id'],
           hospitalName: data['hospital_name'],
+          facilityType: fType,
           rejectionReason: data['rejection_reason'],
           errorMessage: null,
         );

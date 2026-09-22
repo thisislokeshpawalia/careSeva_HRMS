@@ -3,11 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/hospital_provider.dart';
 import '../auth/providers/auth_provider.dart';
 
-class HospitalSettingsScreen extends StatelessWidget {
+import 'package:go_router/go_router.dart';
+
+class HospitalSettingsScreen extends ConsumerWidget {
   const HospitalSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final isClinic = authState.isClinic;
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
@@ -16,13 +21,47 @@ class HospitalSettingsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hospital Configuration',
+              isClinic ? 'Clinic Configuration & Settings' : 'Hospital Configuration & Settings',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFF0D47A1),
                   ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            // Doctor Management Card under Settings
+            Card(
+              color: Colors.blue.shade50.withAlpha(120),
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.blue.shade200),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1565C0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.medical_services_outlined, color: Colors.white),
+                ),
+                title: Text(
+                  'Doctor Management',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0D47A1),
+                      ),
+                ),
+                subtitle: const Text('Add, configure, and manage clinic/hospital doctors and consultation schedules.'),
+                trailing: ElevatedButton.icon(
+                  onPressed: () => context.go('/doctors'),
+                  icon: const Icon(Icons.arrow_forward, size: 16),
+                  label: const Text('Manage Doctors'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             const _GeneralSettingsCard(),
             const SizedBox(height: 32),
             const _DepartmentsCard(),
